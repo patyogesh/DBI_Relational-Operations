@@ -99,7 +99,7 @@ void HeapFile::Load (Schema &f_schema, char *loadpath) {
 }
 
 int HeapFile::Open (char *f_path) {
-#if 0
+#if 1
   /*
    * Create .bin file if doesn't exist
    * Open .bin file
@@ -118,7 +118,7 @@ int HeapFile::Open (char *f_path) {
 }
 
 int HeapFile::Close () {
-#if 0
+#if 1
   /*
    * Close .bin file
    */
@@ -127,7 +127,7 @@ int HeapFile::Close () {
 }
 
 void HeapFile::MoveFirst () {
-#if 0
+#if 1
 
   /*
    * Check if file really contain any records
@@ -148,8 +148,9 @@ void HeapFile::MoveFirst () {
 }
 
 void HeapFile::Add (Record &rec) {
-#if 0
+#if 1
 
+  cout<<"\n ======= I am in SortedFile::Add() ======";
   if(pageReadInProg==0) {
     // currPageIndex = 460;
     currFile.AddPage(&currPage, currFile.GetLength());
@@ -175,7 +176,7 @@ void HeapFile::Add (Record &rec) {
 
 int HeapFile::GetNext (Record &fetchme)
 {
-#if 0
+#if 1
 //  cout<< " current page index :" << currPageIndex << endl;
 //  cout<< " current page length :" << currFile.GetLength() << endl;
 
@@ -212,7 +213,7 @@ int HeapFile::GetNext (Record &fetchme)
 }
 
 int HeapFile::GetNext (Record &fetchme, CNF &myComparison, Record &literal) {
-#if 0
+#if 1
 
 	/*
    * now open up the text file and start procesing it

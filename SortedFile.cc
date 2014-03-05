@@ -15,14 +15,11 @@ using namespace std;
 #include <string.h>
 
 SortedFile::SortedFile () {
-#if 0
   pageReadInProg = 0;
   currPageIndex = 0;
-#endif
 }
 
 int SortedFile::Create (char *f_path, fType f_type, void *startup) {
-#if 1
   /*
    * Create .bin file if doesn't exist
    * Open .bin file
@@ -36,7 +33,6 @@ int SortedFile::Create (char *f_path, fType f_type, void *startup) {
     currFile.Open(0, f_path);
   }
   return 1;
-#endif
 }
 
 void SortedFile::Load (Schema &f_schema, char *loadpath) {
@@ -99,7 +95,6 @@ void SortedFile::Load (Schema &f_schema, char *loadpath) {
 }
 
 int SortedFile::Open (char *f_path) {
-#if 0
   /*
    * Create .bin file if doesn't exist
    * Open .bin file
@@ -114,20 +109,17 @@ int SortedFile::Open (char *f_path) {
   }
 
   return 1;
-#endif
 }
 
 int SortedFile::Close () {
-#if 0
   /*
    * Close .bin file
    */
   currFile.Close();
-#endif
 }
 
 void SortedFile::MoveFirst () {
-#if 0
+#if 1
 
   /*
    * Check if file really contain any records
@@ -148,10 +140,10 @@ void SortedFile::MoveFirst () {
 }
 
 void SortedFile::Add (Record &rec) {
-#if 0
+#if 1
 
+  cout<<"\n======= I am in SortedFile::Add() ======";
   if(pageReadInProg==0) {
-    // currPageIndex = 460;
     currFile.AddPage(&currPage, currFile.GetLength());
     pageReadInProg = 1;
   }
@@ -175,11 +167,11 @@ void SortedFile::Add (Record &rec) {
 
 int SortedFile::GetNext (Record &fetchme)
 {
-#if 0
+#if 1
 //  cout<< " current page index :" << currPageIndex << endl;
 //  cout<< " current page length :" << currFile.GetLength() << endl;
 
-	//cout << " Inside DB FIle GetNExt Page" << endl;
+	cout << " Inside DB FIle GetNExt Page" << endl;
 
   if(pageReadInProg==0) {
     // currPageIndex = 460;

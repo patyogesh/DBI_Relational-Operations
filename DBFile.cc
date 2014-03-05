@@ -26,30 +26,27 @@ DBFile::DBFile () {
 
 int DBFile::Create (char *f_path, fType f_type, void *startup) {
   char path[100];
-  char metadata_buf[20];
   sprintf(path, "%s.metadata", f_path);
   FILE *fptr = fopen(path, "wr");
 
   switch(f_type) {
     case heap:
-      strcpy(metadata_buf, "heap");
       gen_db_file_ptr = new HeapFile();
       break;
     case sorted:
-      strcpy(metadata_buf, "sorted");
       gen_db_file_ptr = new SortedFile();
       break;
     case tree:
-      strcpy(metadata_buf, "tree");
       break;
     default:
       cerr<<"\n Unknown input file type";
       exit(1);
   }
   
-  fwrite(metadata_buf, strlen(metadata_buf), 1, fptr);
+  fwrite((int *)&f_type, sizeof(f_type), 1, fptr);
   fclose(fptr);
-  gen_db_file_ptr->Create(f_path, f_type, startup);
+
+  return gen_db_file_ptr->Create(f_path, f_type, startup);
 }
 
 void DBFile::Load (Schema &f_schema, char *loadpath) {
@@ -112,134 +109,56 @@ void DBFile::Load (Schema &f_schema, char *loadpath) {
 }
 
 int DBFile::Open (char *f_path) {
-#if 0
-  /*
-   * Create .bin file if doesn't exist
-   * Open .bin file
-   */
-  checkIsFileOpen.open(f_path,ios_base::out | ios_base::in);
-
-  if(checkIsFileOpen.is_open()) {
-    currFile.Open(1, f_path);
-  }
-  else {
-    currFile.Open(0, f_path);
+  char path[100];
+  fType f_type;
+  
+  sprintf(path, "%s.metadata", f_path);
+  
+  FILE *fptr = fopen(path, "r");
+  if(!fread(&f_type, sizeof(f_type), 1, fptr)) {
+    cerr<<"\n Read Error";
+    exit(1);
   }
 
-  return 1;
-#endif
+  switch(f_type) {
+    case heap:
+      gen_db_file_ptr = new HeapFile();
+      break;
+    case sorted:
+      gen_db_file_ptr = new SortedFile();
+      break;
+    case tree:
+      break;
+    default:
+      cerr<<"\n Unknown input file type";
+      exit(1);
+  }
+  
+  fclose(fptr);
+
+  return gen_db_file_ptr->Open(f_path);
 }
 
 int DBFile::Close () {
-#if 0
   /*
    * Close .bin file
    */
-  currFile.Close();
-#endif
+  gen_db_file_ptr->Close();
 }
 
 void DBFile::MoveFirst () {
-#if 0
-
-  /*
-   * Check if file really contain any records
-   */
-
-//	cout << " Move First";
-  if(currFile.GetLength()==0){
-    cout << "Bad operation , File Empty" ;
-  }
-  else{
-//	  cout << " Inside DB FIle Move First currPageIndex : "<<currPageIndex<<endl;
-    currPageIndex = 0;
-    currFile.MoveFirst();
-    currFile.GetPage(&currPage, currPageIndex++);
-    pageReadInProg = 1;
-  }
-#endif
+  gen_db_file_ptr->MoveFirst();
 }
 
 void DBFile::Add (Record &rec) {
-#if 0
-
-  if(pageReadInProg==0) {
-    // currPageIndex = 460;
-    currFile.AddPage(&currPage, currFile.GetLength());
-    pageReadInProg = 1;
-  }
-
-
-  if(currFile.GetLength()>0) //existing page
-  {
-    currFile.GetPage(&currPage,currFile.GetLength()-2);
-    currPageIndex = currFile.GetLength()-2;
-  }
-  if(!currPage.Append(&rec)) //full page
-  {
-    currPage.EmptyItOut();
-    currPage.Append(&rec);
-    currPageIndex++;
-  }
-
-  currFile.AddPage(&currPage,currPageIndex);
-#endif
+  gen_db_file_ptr->Add(rec);
 }
 
 int DBFile::GetNext (Record &fetchme)
 {
-#if 0
-//  cout<< " current page index :" << currPageIndex << endl;
-//  cout<< " current page length :" << currFile.GetLength() << endl;
-
-	//cout << " Inside DB FIle GetNExt Page" << endl;
-
-  if(pageReadInProg==0) {
-    // currPageIndex = 460;
-//	  cout << "GetPage 1"<< currPageIndex << endl;
-    currFile.GetPage(&currPage, currPageIndex);
-    currPageIndex= currPageIndex +1;
-    pageReadInProg = 1;
-  }
-
-
-  //fetch page
-
-  if(currPage.GetFirst(&fetchme) ) {
-    return 1;
-  }
-  else{
-
-    if(!(currPageIndex > currFile.GetLength()-2))
-    {//cout << "GetPage 2  page index :"<< currPageIndex << endl;
-      currFile.GetPage(&currPage, currPageIndex++);
-      pageReadInProg++;
-      currPage.GetFirst(&fetchme);
-      return 1;
-    }
-    else{
-      return 0;
-    }
-  }
-#endif
+  return gen_db_file_ptr->GetNext(fetchme);
 }
 
 int DBFile::GetNext (Record &fetchme, CNF &myComparison, Record &literal) {
-#if 0
-
-	/*
-   * now open up the text file and start procesing it
-   * read in all of the records from the text file and see if they match
-	 * the CNF expression that was typed in
-   */
-	 ComparisonEngine comp;
-
-	 while(GetNext(fetchme)){
-		if(comp.Compare (&fetchme, &literal, &myComparison)==1)
-			return 1;
-	}
-
-  return 0;
-
-#endif
+  return gen_db_file_ptr->GetNext(fetchme, myComparison, literal);
 }
