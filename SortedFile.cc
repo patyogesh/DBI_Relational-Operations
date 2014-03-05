@@ -36,7 +36,6 @@ int SortedFile::Create (char *f_path, fType f_type, void *startup) {
 }
 
 void SortedFile::Load (Schema &f_schema, char *loadpath) {
-#if 0
 
   /*
    * Open .tbl file
@@ -91,7 +90,6 @@ void SortedFile::Load (Schema &f_schema, char *loadpath) {
    * Free temporary buffer
    */
   delete currRecord;
-#endif
 }
 
 int SortedFile::Open (char *f_path) {
@@ -119,7 +117,6 @@ int SortedFile::Close () {
 }
 
 void SortedFile::MoveFirst () {
-#if 1
 
   /*
    * Check if file really contain any records
@@ -136,13 +133,10 @@ void SortedFile::MoveFirst () {
     currFile.GetPage(&currPage, currPageIndex++);
     pageReadInProg = 1;
   }
-#endif
 }
 
 void SortedFile::Add (Record &rec) {
-#if 1
 
-  cout<<"\n======= I am in SortedFile::Add() ======";
   if(pageReadInProg==0) {
     currFile.AddPage(&currPage, currFile.GetLength());
     pageReadInProg = 1;
@@ -162,17 +156,14 @@ void SortedFile::Add (Record &rec) {
   }
 
   currFile.AddPage(&currPage,currPageIndex);
-#endif
 }
 
 int SortedFile::GetNext (Record &fetchme)
 {
-#if 1
-//  cout<< " current page index :" << currPageIndex << endl;
-//  cout<< " current page length :" << currFile.GetLength() << endl;
-
-	cout << " Inside DB FIle GetNExt Page" << endl;
-
+#if DEBUG
+  cout<< " current page index :" << currPageIndex << endl;
+  cout<< " current page length :" << currFile.GetLength() << endl;
+#endif
   if(pageReadInProg==0) {
     // currPageIndex = 460;
 //	  cout << "GetPage 1"<< currPageIndex << endl;
@@ -200,11 +191,9 @@ int SortedFile::GetNext (Record &fetchme)
       return 0;
     }
   }
-#endif
 }
 
 int SortedFile::GetNext (Record &fetchme, CNF &myComparison, Record &literal) {
-#if 0
 
 	/*
    * now open up the text file and start procesing it
@@ -220,5 +209,4 @@ int SortedFile::GetNext (Record &fetchme, CNF &myComparison, Record &literal) {
 
   return 0;
 
-#endif
 }

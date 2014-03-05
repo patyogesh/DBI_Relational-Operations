@@ -15,14 +15,11 @@ using namespace std;
 #include <string.h>
 
 HeapFile::HeapFile () {
-#if 0
   pageReadInProg = 0;
   currPageIndex = 0;
-#endif
 }
 
 int HeapFile::Create (char *f_path, fType f_type, void *startup) {
-#if 1
   /*
    * Create .bin file if doesn't exist
    * Open .bin file
@@ -36,11 +33,9 @@ int HeapFile::Create (char *f_path, fType f_type, void *startup) {
     currFile.Open(0, f_path);
   }
   return 1;
-#endif
 }
 
 void HeapFile::Load (Schema &f_schema, char *loadpath) {
-#if 1
 
   /*
    * Open .tbl file
@@ -95,11 +90,9 @@ void HeapFile::Load (Schema &f_schema, char *loadpath) {
    * Free temporary buffer
    */
   delete currRecord;
-#endif
 }
 
 int HeapFile::Open (char *f_path) {
-#if 1
   /*
    * Create .bin file if doesn't exist
    * Open .bin file
@@ -114,20 +107,16 @@ int HeapFile::Open (char *f_path) {
   }
 
   return 1;
-#endif
 }
 
 int HeapFile::Close () {
-#if 1
   /*
    * Close .bin file
    */
   currFile.Close();
-#endif
 }
 
 void HeapFile::MoveFirst () {
-#if 1
 
   /*
    * Check if file really contain any records
@@ -144,13 +133,10 @@ void HeapFile::MoveFirst () {
     currFile.GetPage(&currPage, currPageIndex++);
     pageReadInProg = 1;
   }
-#endif
 }
 
 void HeapFile::Add (Record &rec) {
-#if 1
 
-  cout<<"\n ======= I am in SortedFile::Add() ======";
   if(pageReadInProg==0) {
     // currPageIndex = 460;
     currFile.AddPage(&currPage, currFile.GetLength());
@@ -171,12 +157,10 @@ void HeapFile::Add (Record &rec) {
   }
 
   currFile.AddPage(&currPage,currPageIndex);
-#endif
 }
 
 int HeapFile::GetNext (Record &fetchme)
 {
-#if 1
 //  cout<< " current page index :" << currPageIndex << endl;
 //  cout<< " current page length :" << currFile.GetLength() << endl;
 
@@ -209,11 +193,9 @@ int HeapFile::GetNext (Record &fetchme)
       return 0;
     }
   }
-#endif
 }
 
 int HeapFile::GetNext (Record &fetchme, CNF &myComparison, Record &literal) {
-#if 1
 
 	/*
    * now open up the text file and start procesing it
@@ -229,5 +211,4 @@ int HeapFile::GetNext (Record &fetchme, CNF &myComparison, Record &literal) {
 
   return 0;
 
-#endif
 }

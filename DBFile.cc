@@ -26,6 +26,7 @@ DBFile::DBFile () {
 
 int DBFile::Create (char *f_path, fType f_type, void *startup) {
   char path[100];
+
   sprintf(path, "%s.metadata", f_path);
   FILE *fptr = fopen(path, "wr");
 
@@ -50,62 +51,8 @@ int DBFile::Create (char *f_path, fType f_type, void *startup) {
 }
 
 void DBFile::Load (Schema &f_schema, char *loadpath) {
-#if 0
 
-  /*
-   * Open .tbl file
-   */
-  tblFile = fopen(loadpath, "rb");
-
-  if(!tblFile) {
-    cout << "\nFailed to Open the file: %s" << loadpath;
-    return;
-  }
-
-  currRecord = new (std::nothrow) Record;
-
-  int appendStatus = 1;
-
-  /*
-   * Read record(s) from .tbl file One at a time
-   * till EOF is reached
-   */
-  while(currRecord->SuckNextRecord(&f_schema, tblFile)) {
-
-      /*
-       * Append the sucked record to page
-       */
-      appendStatus = currPage.Append(currRecord);
-
-      /*
-       * If page is full, write the page to file
-       */
-      if(0 == appendStatus) {
-
-
-        currFile.AddPage(&currPage, currFile.GetLength());
-
-        appendStatus = 1;
-
-        /*
-         * Flush the page to re-use it to store further records
-         */
-        currPage.EmptyItOut();
-        currPage.Append(currRecord);
-      }
-  }
-
-  /*
-   * Wri te this page to file although not full because,
-   * we have sucked all records from file
-   */
-  currFile.AddPage(&currPage, currFile.GetLength());
-
-  /*
-   * Free temporary buffer
-   */
-  delete currRecord;
-#endif
+  gen_db_file_ptr->Load(f_schema, loadpath);
 }
 
 int DBFile::Open (char *f_path) {
