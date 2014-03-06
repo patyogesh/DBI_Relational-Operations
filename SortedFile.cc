@@ -127,6 +127,53 @@ int SortedFile::Close () {
    */
 	if(inPipe)
 	inPipe->ShutDown ();
+
+
+
+
+	ComparisonEngine ceng;
+
+	DBFile dbfile;
+	char outfile[100];
+
+		sprintf (outfile, "%s.bigq", rel->path ());
+		dbfile.Create (outfile, heap, NULL);
+
+	int err = 0;
+	int i = 0;
+
+	Record rec[2];
+	Record *last = NULL, *prev = NULL;
+
+	while (outPipe->Remove (&rec[i%2])) {
+		prev = last;
+		last = &rec[i%2];
+
+		if (prev && last) {
+			if (ceng.Compare (prev, last, sortOrder) == 1) {
+				err++;
+			}
+				dbfile.Add (*prev);
+		}
+		i++;
+	}
+
+	cout << " consumer: removed " << i << " recs from the pipe\n";
+
+		if (last) {
+			dbfile.Add (*last);
+		}
+		cerr << " consumer: recs removed written out as heap DBFile at " << outfile << endl;
+		dbfile.Close ();
+
+	cerr << " consumer: " << (i - err) << " recs out of " << i << " recs in sorted order \n";
+	if (err) {
+		cerr << " consumer: " <<  err << " recs failed sorted order test \n" << endl;
+	}
+
+
+
+
   currFile.Close();
 }
 
