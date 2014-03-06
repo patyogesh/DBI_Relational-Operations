@@ -10,11 +10,19 @@
 #include "GenDBFile.h"
 #include "Defs.h"
 #include "Pipe.h"
+#include "BigQ.h"
 #include <fstream>
 
-#define IN_OU_PIPE_BUFF_SIZE 100
+#define IN_OUT_PIPE_BUFF_SIZE 100
+
+enum SortedFileMode
+{
+  READING,
+  WRITING
+};
 
 class SortedFile:public GenDBFile {
+    int       counter;
     int       pageReadInProg; /* flag to indicate if page is read from file */
     int       currPageIndex;  /* Index of page currently being read */
     FILE      *dbFile;        /* Pointer to DB file */
@@ -26,10 +34,12 @@ class SortedFile:public GenDBFile {
     File      currFile;       /* Pointer to current file being read/written */
     fstream   checkIsFileOpen;/* flag to check if file already open */
 
+    BigQ      *bigQ;
     Pipe      *inPipe;
     Pipe      *outPipe;
     OrderMaker *sortOrder;
     int       runLen;
+    SortedFileMode  currMode;
 
 public:
     SortedFile ();
