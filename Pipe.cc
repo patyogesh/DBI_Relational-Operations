@@ -62,7 +62,7 @@ void Pipe :: Insert (Record *insertMe) {
 
 	// done!
 	pthread_mutex_unlock (&pipeMutex);
-  cout << "\n **** Insert Returning ****";
+ // cout << "\n **** Insert Returning ****";
 }
 
 

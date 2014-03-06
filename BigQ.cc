@@ -313,12 +313,10 @@ bigQueue(void *vptr) {
 	int count = 0;
 
 	while (record_present) {
-  cout <<"\n ********** in First while ***********";
-  cout <<"\n ********** in First while ***********";
-  cout <<"\n ********** in First while ***********";
+//  cout <<"\n ********** in First while ***********";
 		while (numPages <= inParams->runLen) {
-  cout <<"\n ********** in Second while ***********";
-  cout <<"\n ********** in Second while ***********";
+//  cout <<"\n ********** in Second while ***********"<<count++;
+ // cout <<"\n ********** in Second while ***********";
 			/*
 			 * Fetch record(s) from input pipe one by one
 			 * and add it to a page/runs
@@ -382,6 +380,7 @@ bigQueue(void *vptr) {
 				 * No more records left there
 				 */
 				record_present = 0;
+			//	cout << "Exiting Bq";
 				break;
 			}
 		}/* End of while(numPages <= inParams->runLen) */

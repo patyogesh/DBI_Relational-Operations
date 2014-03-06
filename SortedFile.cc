@@ -125,6 +125,8 @@ int SortedFile::Close () {
   /*
    * Close .bin file
    */
+	if(inPipe)
+	inPipe->ShutDown ();
   currFile.Close();
 }
 
@@ -147,22 +149,50 @@ void SortedFile::MoveFirst () {
   }
 }
 
+
+
+void*
+bigQueue1(void *vptr) {
+	cout << "Creating Thread ";
+	threadParams_t *inParams = (threadParams_t *) vptr;
+	BigQ bq(*inParams->inPipe, *inParams->outPipe, *inParams->sortOrder, inParams->runLen);
+}
 void SortedFile::Add (Record &rec) {
 
   counter++;
-  cout<<"\n#### Counter:" << counter << &rec <<"####";
+ // cout<<"\n#### Counter:" << counter << &rec <<"####";
   if(READING == currMode) {
     currMode = WRITING;
 
-    if(!bigQ) {
+    if(flag==0) {
       inPipe = new Pipe(IN_OUT_PIPE_BUFF_SIZE);
       outPipe = new Pipe(IN_OUT_PIPE_BUFF_SIZE);
-      //bigQ = new BigQ(*inPipe, *outPipe, *sortOrder, runLen);
+      inPipe->Insert(&rec);
+      pthread_t thread1;
+
+  	threadParams_t *tp = new (std::nothrow) threadParams_t;
+
+  	/*
+  	 * use a container to pass arguments to worker thread
+  	 */
+  	tp->inPipe = inPipe;
+  	tp->outPipe = outPipe;
+  	tp->sortOrder = sortOrder;
+  	tp->runLen = runLen;
+
+  	pthread_create(&thread1, NULL, bigQueue1, (void *) tp);
+      	cout << "Create queue ";
+      //	flag=1;
+
+
+
     }
-    inPipe->Insert(&rec);
+
   }
   else if(WRITING == currMode) {
+	  cout << " in else";
     inPipe->Insert(&rec);
+
   }
   else {
   }
