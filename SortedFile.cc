@@ -34,6 +34,7 @@ int SortedFile::Create (char *f_path, fType f_type, void *startup) {
   else {
     currFile.Open(0, f_path);
   }
+  file_path = f_path;
   return 1;
 }
 
@@ -96,6 +97,7 @@ int SortedFile::Open (char *f_path) {
    * Read from file and store the sortorder info and
    * runLen in private members of SortedFile
    */
+  file_path = f_path;
   sortOrder = new OrderMaker;
   sortOrder = si.myOrder;
   runLen    = si.runLength;
@@ -123,58 +125,67 @@ int SortedFile::Open (char *f_path) {
 
 int SortedFile::Close () {
   /*
-   * Close .bin file
+   * Close .bin file in case when we are just scanning
+   * through file OR
+   * close after successful creation of heap file
    */
+  if(!outPipe) {
+    return currFile.Close();
+  }
+
+  /*
+   * If control falls through here,
+   * we are dealing with sorted file
+   */
+
 	if(inPipe)
-	inPipe->ShutDown ();
-
-
-
+	  inPipe->ShutDown ();
 
 	ComparisonEngine ceng;
 
 	DBFile dbfile;
 	char outfile[100];
 
-		sprintf (outfile, "%s.bigq", rel->path ());
-		dbfile.Create (outfile, heap, NULL);
+	sprintf (outfile, "%s.bigq", file_path);
+	dbfile.Create (outfile, heap, NULL);
 
 	int err = 0;
 	int i = 0;
 
-	Record rec[2];
+	Record rec;
 	Record *last = NULL, *prev = NULL;
 
-	while (outPipe->Remove (&rec[i%2])) {
-		prev = last;
-		last = &rec[i%2];
-
-		if (prev && last) {
-			if (ceng.Compare (prev, last, sortOrder) == 1) {
-				err++;
-			}
-				dbfile.Add (*prev);
-		}
+	while (outPipe->Remove (&rec)) {
+		dbfile.Add (*&rec);
 		i++;
 	}
 
-	cout << " consumer: removed " << i << " recs from the pipe\n";
+	cout << "\n consumer: removed " << i << " recs from the pipe\n";
 
-		if (last) {
-			dbfile.Add (*last);
-		}
-		cerr << " consumer: recs removed written out as heap DBFile at " << outfile << endl;
-		dbfile.Close ();
+	cerr << "\n consumer: recs removed written out as heap DBFile at " << outfile << endl;
+	dbfile.Close ();
 
-	cerr << " consumer: " << (i - err) << " recs out of " << i << " recs in sorted order \n";
-	if (err) {
-		cerr << " consumer: " <<  err << " recs failed sorted order test \n" << endl;
-	}
-
-
-
+  delete inPipe;
+  delete outPipe;
+  inPipe = NULL;
+  outPipe = NULL;
 
   currFile.Close();
+  /*
+   * Remove XX.bin file and
+   * Rename XX.bin.bigq to XX.bin
+   */
+  remove(file_path);
+  rename(outfile, file_path);
+
+  /*
+   * Need to be handled more gracefully
+   * the unwanted XX.bigq.metadata being created.
+   * One way is to call Append and AddPage APIs instead of
+   * dbfile.Add()
+   */
+	sprintf (outfile, "%s.metadata", outfile);
+  remove(outfile);
 }
 
 void SortedFile::MoveFirst () {
@@ -228,18 +239,12 @@ void SortedFile::Add (Record &rec) {
   	tp->runLen = runLen;
 
   	pthread_create(&thread1, NULL, bigQueue1, (void *) tp);
-      	cout << "Create queue ";
-      //	flag=1;
-
-
-
+      	//cout << "Create queue ";
+      flag=1;
     }
-
   }
   else if(WRITING == currMode) {
-	  cout << " in else";
     inPipe->Insert(&rec);
-
   }
   else {
   }

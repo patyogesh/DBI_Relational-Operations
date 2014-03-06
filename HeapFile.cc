@@ -137,7 +137,6 @@ void HeapFile::MoveFirst () {
 
 void HeapFile::Add (Record &rec) {
 
-  cout<<"\n ===  HeapFile:: Add ===";
   if(pageReadInProg==0) {
     // currPageIndex = 460;
     currFile.AddPage(&currPage, currFile.GetLength());

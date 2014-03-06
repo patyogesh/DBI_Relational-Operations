@@ -23,7 +23,7 @@ enum SortedFileMode
 
 class SortedFile:public GenDBFile {
     int       counter;
-    int flag =0;
+    int       flag =0;
     int       pageReadInProg; /* flag to indicate if page is read from file */
     int       currPageIndex;  /* Index of page currently being read */
     FILE      *dbFile;        /* Pointer to DB file */
@@ -35,6 +35,7 @@ class SortedFile:public GenDBFile {
     File      currFile;       /* Pointer to current file being read/written */
     fstream   checkIsFileOpen;/* flag to check if file already open */
 
+    char      *file_path;
     BigQ      *bigQ;
     Pipe      *inPipe;
     Pipe      *outPipe;

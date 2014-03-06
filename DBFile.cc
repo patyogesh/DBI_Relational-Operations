@@ -72,6 +72,7 @@ int DBFile::Open (char *f_path) {
     cerr<<"\n Read Error";
     exit(1);
   }
+  fclose(fptr);
 
   switch(f_type) {
     case heap:
@@ -86,8 +87,6 @@ int DBFile::Open (char *f_path) {
       cerr<<"\n Unknown input file type";
       exit(1);
   }
-  
-  fclose(fptr);
 
   return gen_db_file_ptr->Open(f_path);
 }
@@ -97,6 +96,8 @@ int DBFile::Close () {
    * Close .bin file
    */
   gen_db_file_ptr->Close();
+  delete gen_db_file_ptr;
+  gen_db_file_ptr = NULL;
 }
 
 void DBFile::MoveFirst () {
