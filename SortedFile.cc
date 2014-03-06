@@ -8,6 +8,7 @@
 #include "GenDBFile.h"
 #include "SortedFile.h"
 #include "Defs.h"
+#include "BigQ.h"
 
 using namespace std;
 #include <fstream>
@@ -94,6 +95,32 @@ void SortedFile::Load (Schema &f_schema, char *loadpath) {
 
 int SortedFile::Open (char *f_path) {
   /*
+   * read sortOrder and runLen from .metadata file
+   */
+  char path[100];
+  fType f_type;
+  sprintf(path, "%s.metadata", f_path);
+
+  FILE *fptr = fopen(path, "r");
+  SortInfo si;                                                                                                                                                    
+
+  if(!fread(&f_type,sizeof(fType), 1, fptr)) {
+    cerr<<"\n f_type Read Error";
+    exit(1);
+  }
+  if(!fread(&si,sizeof(SortInfo), 1, fptr)) {
+    cerr<<"\n SortInfo Read Error";
+    exit(1);
+  }
+  /*
+   * Read from file and store the sortorder info and
+   * runLen in private members of SortedFile
+   */
+  sortOrder = new OrderMaker;
+  sortOrder = si.myOrder;
+  runLen    = si.runLength;
+  fclose(fptr);
+  /*
    * Create .bin file if doesn't exist
    * Open .bin file
    */
@@ -105,7 +132,7 @@ int SortedFile::Open (char *f_path) {
   else {
     currFile.Open(0, f_path);
   }
-
+  
   return 1;
 }
 
@@ -137,6 +164,11 @@ void SortedFile::MoveFirst () {
 
 void SortedFile::Add (Record &rec) {
 
+  inPipe = new Pipe(IN_OU_PIPE_BUFF_SIZE);
+  outPipe = new Pipe(IN_OU_PIPE_BUFF_SIZE);
+
+  inPipe->Insert(&rec);
+#if 0
   if(pageReadInProg==0) {
     currFile.AddPage(&currPage, currFile.GetLength());
     pageReadInProg = 1;
@@ -156,6 +188,7 @@ void SortedFile::Add (Record &rec) {
   }
 
   currFile.AddPage(&currPage,currPageIndex);
+#endif
 }
 
 int SortedFile::GetNext (Record &fetchme)

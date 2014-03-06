@@ -16,6 +16,5 @@ typedef enum {heap, sorted, tree} fType;
 
 unsigned int Random_Generate();
 
-
 #endif
 

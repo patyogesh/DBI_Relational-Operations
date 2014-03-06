@@ -8,6 +8,10 @@
 
 using namespace std;
 
+struct SortInfo {                                                                                                                                                       
+  OrderMaker *myOrder;                                                                                                                                                  
+  int runLength;                                                                                                                                                        
+};
 /*
  * Use temporary structure for passing multiple aruguments
  * to worker thread

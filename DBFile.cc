@@ -9,6 +9,7 @@
 #include "SortedFile.h"
 #include "GenDBFile.h"
 #include "Defs.h"
+#include "BigQ.h"
 
 using namespace std;
 #include <fstream>
@@ -18,10 +19,6 @@ using namespace std;
 // stub file .. replace it with your own DBFile.cc
 
 DBFile::DBFile () {
-#if 0
-  pageReadInProg = 0;
-  currPageIndex = 0;
-#endif
 }
 
 int DBFile::Create (char *f_path, fType f_type, void *startup) {
@@ -32,10 +29,20 @@ int DBFile::Create (char *f_path, fType f_type, void *startup) {
 
   switch(f_type) {
     case heap:
-      gen_db_file_ptr = new HeapFile();
+      {
+        gen_db_file_ptr = new HeapFile();
+        fwrite((int *)&f_type, sizeof(f_type), 1, fptr);
+      }
       break;
     case sorted:
-      gen_db_file_ptr = new SortedFile();
+      {
+        gen_db_file_ptr = new SortedFile();
+
+        fwrite((int *)&f_type, sizeof(f_type), 1, fptr);
+
+        SortInfo *si = (SortInfo *)startup;
+        fwrite((SortInfo *)si, sizeof(SortInfo), 1, fptr);
+      }
       break;
     case tree:
       break;
@@ -44,7 +51,6 @@ int DBFile::Create (char *f_path, fType f_type, void *startup) {
       exit(1);
   }
   
-  fwrite((int *)&f_type, sizeof(f_type), 1, fptr);
   fclose(fptr);
 
   return gen_db_file_ptr->Create(f_path, f_type, startup);

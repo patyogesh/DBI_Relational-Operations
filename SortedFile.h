@@ -9,8 +9,10 @@
 #include "ComparisonEngine.h"
 #include "GenDBFile.h"
 #include "Defs.h"
+#include "Pipe.h"
 #include <fstream>
 
+#define IN_OU_PIPE_BUFF_SIZE 100
 
 class SortedFile:public GenDBFile {
     int       pageReadInProg; /* flag to indicate if page is read from file */
@@ -23,6 +25,11 @@ class SortedFile:public GenDBFile {
     Page      currPage;       /* Pointer to current page being read/written */
     File      currFile;       /* Pointer to current file being read/written */
     fstream   checkIsFileOpen;/* flag to check if file already open */
+
+    Pipe      *inPipe;
+    Pipe      *outPipe;
+    OrderMaker *sortOrder;
+    int       runLen;
 
 public:
     SortedFile ();
