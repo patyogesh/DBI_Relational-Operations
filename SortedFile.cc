@@ -18,6 +18,7 @@ using namespace std;
 SortedFile::SortedFile () {
   pageReadInProg = 0;
   currPageIndex = 0;
+  counter=0;
 }
 
 int SortedFile::Create (char *f_path, fType f_type, void *startup) {
@@ -38,62 +39,41 @@ int SortedFile::Create (char *f_path, fType f_type, void *startup) {
 
 void SortedFile::Load (Schema &f_schema, char *loadpath) {
 
+  currMode = WRITING;
+
+  if(!bigQ) {
+    inPipe = new Pipe(IN_OUT_PIPE_BUFF_SIZE);
+    outPipe = new Pipe(IN_OUT_PIPE_BUFF_SIZE);
+    bigQ = new BigQ(*inPipe, *outPipe, *sortOrder, runLen);
+  }
+    
   /*
    * Open .tbl file
    */
   tblFile = fopen(loadpath, "rb");
 
   if(!tblFile) {
-    cout << "\nFailed to Open the file: %s" << loadpath;
+    cerr << "\nFailed to Open the file: %s" << loadpath;
     return;
   }
 
   currRecord = new (std::nothrow) Record;
-
-  int appendStatus = 1;
 
   /*
    * Read record(s) from .tbl file One at a time
    * till EOF is reached
    */
   while(currRecord->SuckNextRecord(&f_schema, tblFile)) {
-
-      /*
-       * Append the sucked record to page
-       */
-      appendStatus = currPage.Append(currRecord);
-
-      /*
-       * If page is full, write the page to file
-       */
-      if(0 == appendStatus) {
-
-
-        currFile.AddPage(&currPage, currFile.GetLength());
-
-        appendStatus = 1;
-
-        /*
-         * Flush the page to re-use it to store further records
-         */
-        currPage.EmptyItOut();
-        currPage.Append(currRecord);
-      }
+    inPipe->Insert(currRecord);
   }
-
-  /*
-   * Wri te this page to file although not full because,
-   * we have sucked all records from file
-   */
-  currFile.AddPage(&currPage, currFile.GetLength());
-
-  /*
-   * Free temporary buffer
-   */
   delete currRecord;
+
 }
 
 int SortedFile::Open (char *f_path) {
+#ifdef DEBUG
+  cout<<"\n ===  SortedFile::Open currMode: " << currMode <<"===";
+#endif
   /*
    * read sortOrder and runLen from .metadata file
    */
@@ -133,6 +113,11 @@ int SortedFile::Open (char *f_path) {
     currFile.Open(0, f_path);
   }
   
+  currMode = READING;
+#ifdef DEBUG
+  cout<<"\n === Open currMode: READING ===";
+#endif
+  MoveFirst();
   return 1;
 }
 
@@ -164,31 +149,23 @@ void SortedFile::MoveFirst () {
 
 void SortedFile::Add (Record &rec) {
 
-  inPipe = new Pipe(IN_OU_PIPE_BUFF_SIZE);
-  outPipe = new Pipe(IN_OU_PIPE_BUFF_SIZE);
+  counter++;
+  cout<<"\n#### Counter:" << counter << &rec <<"####";
+  if(READING == currMode) {
+    currMode = WRITING;
 
-  inPipe->Insert(&rec);
-#if 0
-  if(pageReadInProg==0) {
-    currFile.AddPage(&currPage, currFile.GetLength());
-    pageReadInProg = 1;
+    if(!bigQ) {
+      inPipe = new Pipe(IN_OUT_PIPE_BUFF_SIZE);
+      outPipe = new Pipe(IN_OUT_PIPE_BUFF_SIZE);
+      //bigQ = new BigQ(*inPipe, *outPipe, *sortOrder, runLen);
+    }
+    inPipe->Insert(&rec);
   }
-
-
-  if(currFile.GetLength()>0) //existing page
-  {
-    currFile.GetPage(&currPage,currFile.GetLength()-2);
-    currPageIndex = currFile.GetLength()-2;
+  else if(WRITING == currMode) {
+    inPipe->Insert(&rec);
   }
-  if(!currPage.Append(&rec)) //full page
-  {
-    currPage.EmptyItOut();
-    currPage.Append(&rec);
-    currPageIndex++;
+  else {
   }
-
-  currFile.AddPage(&currPage,currPageIndex);
-#endif
 }
 
 int SortedFile::GetNext (Record &fetchme)

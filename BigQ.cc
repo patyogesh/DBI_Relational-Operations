@@ -300,6 +300,7 @@ void*
 bigQueue(void *vptr) {
 	threadParams_t *inParams = (threadParams_t *) vptr;
 
+  cout <<"\n ********** Thread bigQueue ***********";
 	Record fetchedRecord;
 	Page tmpBufferPage;
 	recOnVector *tmpRecordVector;
@@ -312,7 +313,12 @@ bigQueue(void *vptr) {
 	int count = 0;
 
 	while (record_present) {
+  cout <<"\n ********** in First while ***********";
+  cout <<"\n ********** in First while ***********";
+  cout <<"\n ********** in First while ***********";
 		while (numPages <= inParams->runLen) {
+  cout <<"\n ********** in Second while ***********";
+  cout <<"\n ********** in Second while ***********";
 			/*
 			 * Fetch record(s) from input pipe one by one
 			 * and add it to a page/runs
