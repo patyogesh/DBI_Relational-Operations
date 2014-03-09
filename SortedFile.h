@@ -21,6 +21,11 @@ enum SortedFileMode
   WRITING
 };
 
+/*struct SortInfo {
+OrderMaker *myOrder;
+int runLength;
+};*/
+
 class SortedFile:public GenDBFile {
     int       counter;
     int       flag =0;
@@ -43,6 +48,18 @@ class SortedFile:public GenDBFile {
     int       runLen;
     SortedFileMode  currMode;
 
+    SortInfo *sortInfo;
+
+    int bSearchFlg =0;
+
+    void toggleCurrMode();
+    void mergeInflghtRecs();
+    void createMetaFile();
+
+
+
+
+
 public:
     SortedFile ();
 
@@ -58,5 +75,12 @@ public:
     int GetNext (Record &fetchme, CNF &cnf, Record &literal);
     void *setupBq(void *ptr);
     void start();
+
+
+    //returns common attributes of 2 OrderMakers in a 3rd OrderMaker
+          //if no attributes match, it returns null
+          OrderMaker* GetMatchingOrder(CNF &cnf,OrderMaker& file_order);
+
+      	int GetSortOrderFromCNF (CNF &cnf,OrderMaker &left, OrderMaker &right);
 };
 #endif
