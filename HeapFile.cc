@@ -32,6 +32,13 @@ int HeapFile::Create (char *f_path, fType f_type, void *startup) {
   else {
     currFile.Open(0, f_path);
   }
+  char path[100];
+                                                                                                                                                                        
+  sprintf(path, "%s.metadata", f_path);
+  FILE *fptr = fopen(path, "wr");
+  fwrite((int *)&f_type,1 , sizeof(f_type), fptr);
+  fclose(fptr);
+
   return 1;
 }
 

@@ -301,6 +301,7 @@ bigQueue(void *vptr) {
 	threadParams_t *inParams = (threadParams_t *) vptr;
 
   cout <<"\n ********** Thread bigQueue ***********";
+  cout <<"\n ********** Thread bigQueue ***********";
 	Record fetchedRecord;
 	Page tmpBufferPage;
 	recOnVector *tmpRecordVector;
@@ -315,7 +316,7 @@ bigQueue(void *vptr) {
 	while (record_present) {
 //  cout <<"\n ********** in First while ***********";
 		while (numPages <= inParams->runLen) {
-//  cout <<"\n ********** in Second while ***********"<<count++;
+  //cout <<"\n ********** in Second while ***********"<<count++;
  // cout <<"\n ********** in Second while ***********";
 			/*
 			 * Fetch record(s) from input pipe one by one
@@ -390,6 +391,7 @@ bigQueue(void *vptr) {
 		/* Reset the number of pages per run */
 		numPages = 0;
 
+  cout <<"\n ********** recSortVector Size: " << recSortVect.size() <<"***********";
 #ifdef DEBUG
 		cout << "\nbigQueue before sorting " << g_runCount <<" run";
     for (int i=0; i<recSortVect.size(); i++) {
@@ -427,6 +429,7 @@ bigQueue(void *vptr) {
 #endif
 
 	merge_pages(inParams);
+  cout <<"\n ********** Thread bigQueue Over ***********";
 }
 
 #ifdef DEBUG
@@ -460,6 +463,7 @@ BigQ::BigQ(Pipe &in,
 	 * Create worker Thread for sorting purpose
 	 */
 	pthread_t thread3;
+  cout <<"\n ********** Creating bigQueue Thread ***********";
 	pthread_create(&thread3, NULL, bigQueue, (void *) tp);
 
 	pthread_join(thread3, NULL);
@@ -469,6 +473,7 @@ BigQ::BigQ(Pipe &in,
 
 	// finally shut down the out pipe
 	out.ShutDown();
+  cout <<"\n ********** Thread FINISHED ***********";
 }
 
 BigQ::~BigQ() {

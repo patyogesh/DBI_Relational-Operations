@@ -9,258 +9,288 @@
 #include "SortedFile.h"
 #include "Defs.h"
 #include "BigQ.h"
+#include <cstdio>
+#include <sys/time.h>
+#include <sstream>
 
 using namespace std;
 #include <fstream>
 #include <iostream>
 #include <string.h>
 
-SortedFile::SortedFile () {
-  pageReadInProg = 0;
-  currPageIndex = 0;
-  counter=0;
+SortedFile::SortedFile() {
+	pageReadInProg = 0;
+	currPageIndex = 0;
+	counter = 0;
+  hasSortOrder = 1;
+  flag = 0;
 }
 
-int SortedFile::Create (char *f_path, fType f_type, void *startup) {
-  /*
-   * Create .bin file if doesn't exist
-   * Open .bin file
-   */
-  checkIsFileOpen.open(f_path,ios_base::out | ios_base::in);
+int SortedFile::Create(char *f_path, fType f_type, void *startup) {
+	/*
+	 * Create .bin file if doesn't exist
+	 * Open .bin file
+	 */
+	checkIsFileOpen.open(f_path, ios_base::out | ios_base::in);
 
-  if(checkIsFileOpen.is_open()) {
-    currFile.Open(1, f_path);
-  }
-  else {
-    currFile.Open(0, f_path);
-  }
-  file_path = f_path;
-  return 1;
-}
+	if (checkIsFileOpen.is_open()) {
+		currFile.Open(1, f_path);
+	} else {
+		currFile.Open(0, f_path);
+	}
+	file_path = f_path;
 
-void SortedFile::Load (Schema &f_schema, char *loadpath) {
-
-  currMode = WRITING;
-
-  if(!bigQ) {
-    inPipe = new Pipe(IN_OUT_PIPE_BUFF_SIZE);
-    outPipe = new Pipe(IN_OUT_PIPE_BUFF_SIZE);
-    bigQ = new BigQ(*inPipe, *outPipe, *sortOrder, runLen);
-  }
-
-  /*
-   * Open .tbl file
-   */
-  tblFile = fopen(loadpath, "rb");
-
-  if(!tblFile) {
-    cerr << "\nFailed to Open the file: %s" << loadpath;
-    return;
-  }
-
-  currRecord = new (std::nothrow) Record;
-
-  /*
-   * Read record(s) from .tbl file One at a time
-   * till EOF is reached
-   */
-  while(currRecord->SuckNextRecord(&f_schema, tblFile)) {
-    inPipe->Insert(currRecord);
-  }
-  delete currRecord;
-
-}
-
-
-
-int SortedFile::Open (char *f_path) {
-#ifdef DEBUG
-  cout<<"\n ===  SortedFile::Open currMode: " << currMode <<"===";
-#endif
-  /*
-   * read sortOrder and runLen from .metadata file
-   */
   char path[100];
-  fType f_type;
   sprintf(path, "%s.metadata", f_path);
+  FILE *fptr = fopen(path, "wr");
 
-  FILE *fptr = fopen(path, "r");
-  SortInfo si;
+  fwrite((int *)&f_type, 1, sizeof(f_type), fptr);
 
-  if(!fread(&f_type,sizeof(fType), 1, fptr)) {
-    cerr<<"\n f_type Read Error";
-    exit(1);
-  }
-  if(!fread(&si,sizeof(SortInfo), 1, fptr)) {
-    cerr<<"\n SortInfo Read Error";
-    exit(1);
-  }
-  /*
-   * Read from file and store the sortorder info and
-   * runLen in private members of SortedFile
-   */
-  file_path = f_path;
-  sortOrder = new OrderMaker;
-  sortOrder = si.myOrder;
-  runLen    = si.runLength;
+  SortInfo *si = new SortInfo();
+
+  si->myOrder = new OrderMaker();
+  memcpy(si->myOrder, ((SortInfo *)startup)->myOrder, sizeof(OrderMaker));
+
+  si->runLength = ((SortInfo *)startup)->runLength;
+
+  fwrite((int *)&si->runLength, 1, sizeof(int), fptr);
+  fwrite((OrderMaker *)si->myOrder, 1, sizeof(OrderMaker), fptr);
   fclose(fptr);
-  /*
-   * Create .bin file if doesn't exist
-   * Open .bin file
-   */
-  checkIsFileOpen.open(f_path,ios_base::out | ios_base::in);
-
-  if(checkIsFileOpen.is_open()) {
-    currFile.Open(1, f_path);
-  }
-  else {
-    currFile.Open(0, f_path);
-  }
-
-  currMode = READING;
-#ifdef DEBUG
-  cout<<"\n === Open currMode: READING ===";
-#endif
-  MoveFirst();
-  return 1;
+	return 1;
 }
 
-int SortedFile::Close () {
-  /*
-   * Close .bin file in case when we are just scanning
-   * through file OR
-   * close after successful creation of heap file
-   */
-  if(!outPipe) {
-    return currFile.Close();
-  }
+void SortedFile::Load(Schema &f_schema, char *loadpath) {
 
-  /*
-   * If control falls through here,
-   * we are dealing with sorted file
-   */
+	/*currMode = WRITING;
 
-	if(inPipe)
-	  inPipe->ShutDown ();
+	if (!bigQ) {
+		inPipe = new Pipe(IN_OUT_PIPE_BUFF_SIZE);
+		outPipe = new Pipe(IN_OUT_PIPE_BUFF_SIZE);
+		bigQ = new BigQ(*inPipe, *outPipe, *sortOrder, runLen);
+	}
+*/
+	/*
+	 * Open .tbl file
+	 */
+	tblFile = fopen(loadpath, "rb");
+
+	if (!tblFile) {
+		cerr << "\nFailed to Open the file: %s" << loadpath;
+		return;
+	}
+
+	currRecord = new (std::nothrow) Record;
+
+	/*
+	 * Read record(s) from .tbl file One at a time
+	 * till EOF is reached
+	 */
+	while (currRecord->SuckNextRecord(&f_schema, tblFile)) {
+		//inPipe->Insert(currRecord);
+		 Add(*currRecord);
+	}
+	delete currRecord;
+
+}
+
+int SortedFile::Open(char *f_path) {
+#ifdef DEBUG
+	cout<<"\n ===  SortedFile::Open currMode: " << currMode <<"===";
+#endif
+	/*
+	 * read sortOrder and runLen from .metadata file
+	 */
+	char path[100];
+	fType f_type;
+	sprintf(path, "%s.metadata", f_path);
+
+	FILE *fptr = fopen(path, "r");
+	SortInfo si;
+  si.myOrder = new OrderMaker();
+
+	if (!fread(&f_type, 1, sizeof(fType), fptr)) {
+		cerr << "\n f_type Read Error";
+		exit(1);
+	}
+	fread((int *)&si.runLength, 1, sizeof(int), fptr);
+	fread((OrderMaker *)si.myOrder, 1, sizeof(OrderMaker), fptr);
+	/*
+	 * Read from file and store the sortorder info and
+	 * runLen in private members of SortedFile
+	 */
+	file_path = f_path;
+  sortOrder = new OrderMaker();
+  memcpy(sortOrder, si.myOrder, sizeof(OrderMaker));
+	runLen = si.runLength;
+	fclose(fptr);
+	/*
+	 * Create .bin file if doesn't exist
+	 * Open .bin file
+	 */
+	checkIsFileOpen.open(f_path, ios_base::out | ios_base::in);
+
+	if (checkIsFileOpen.is_open()) {
+		currFile.Open(1, f_path);
+	} else {
+		currFile.Open(0, f_path);
+	}
+
+	currMode = READING;
+#ifdef DEBUG
+	cout<<"\n === Open currMode: READING ===";
+#endif
+	MoveFirst();
+	return 1;
+}
+
+int SortedFile::Close() {
+	if (!outPipe || !inPipe) {
+		return currFile.Close();
+	}
+	/*
+	 * Close .bin file in case when we are just scanning
+	 * through file OR
+	 * close after successful creation of heap file
+
+	if (!outPipe || !inPipe) {
+		return currFile.Close();
+	}
+
+
+	 * If control falls through here,
+	 * we are dealing with sorted file
+
+
+	if (inPipe)
+		inPipe->ShutDown();
 
 	ComparisonEngine ceng;
 
 	DBFile dbfile;
 	char outfile[100];
 
-	sprintf (outfile, "%s.bigq", file_path);
-	dbfile.Create (outfile, heap, NULL);
+	sprintf(outfile, "%s.bigq", file_path);
+	dbfile.Create(outfile, heap, NULL);
 
-	int err = 0;
 	int i = 0;
 
 	Record rec;
 	Record *last = NULL, *prev = NULL;
 
-	while (outPipe->Remove (&rec)) {
-		dbfile.Add (*&rec);
+	while (outPipe->Remove(&rec)) {
+		dbfile.Add(*&rec);
 		i++;
 	}
 
 	cout << "\n consumer: removed " << i << " recs from the pipe\n";
 
-	cerr << "\n consumer: recs removed written out as heap DBFile at " << outfile << endl;
-	dbfile.Close ();
+	cerr << "\n consumer: recs removed written out as heap DBFile at "
+			<< outfile << endl;
+	dbfile.Close();*/
 
-  delete inPipe;
-  delete outPipe;
-  inPipe = NULL;
-  outPipe = NULL;
+	//write inQueue/inFlight records to disk
+  if(WRITING == currMode)
+	 mergeInflghtRecs();
 
-  currFile.Close();
-  /*
-   * Remove XX.bin file and
-   * Rename XX.bin.bigq to XX.bin
-   */
-  remove(file_path);
-  rename(outfile, file_path);
+	 //close the input/output pipes
+  if(inPipe) {
+	  delete inPipe;
+	  inPipe = NULL;
+  }
+  if(outPipe) {
+	  delete outPipe  ;
+	  outPipe = NULL;
+  }
 
-  /*
-   * Need to be handled more gracefully
-   * the unwanted XX.bigq.metadata being created.
-   * One way is to call Append and AddPage APIs instead of
-   * dbfile.Add()
-   */
-	sprintf (outfile, "%s.metadata", outfile);
-  remove(outfile);
+	currFile.Close();
+	/*
+	 * Remove XX.bin file and
+	 * Rename XX.bin.bigq to XX.bin
+	 */
+//	remove(file_path);
+//	rename(outfile, file_path);
+
+	/*
+	 * Need to be handled more gracefully
+	 * the unwanted XX.bigq.metadata being created.
+	 * One way is to call Append and AddPage APIs instead of
+	 * dbfile.Add()
+	 */
+//	sprintf(outfile, "%s.metadata", outfile);
+//	remove(outfile);
 }
 
-void SortedFile::MoveFirst () {
+void SortedFile::MoveFirst() {
 
-  /*
-   * Check if file really contain any records
-   */
+	/*
+	 * Check if file really contain any records
+	 */
 
 //	cout << " Move First";
-  if(currFile.GetLength()==0){
-    cout << "Bad operation , File Empty" ;
-  }
-  else{
+	if (currFile.GetLength() == 0) {
+		cout << "Bad operation , File Empty";
+	} else {
 //	  cout << " Inside DB FIle Move First currPageIndex : "<<currPageIndex<<endl;
-    currPageIndex = 0;
-    currFile.MoveFirst();
-    currFile.GetPage(&currPage, currPageIndex++);
-    pageReadInProg = 1;
-  }
+		currPageIndex = 0;
+		currFile.MoveFirst();
+		currFile.GetPage(&currPage, currPageIndex++);
+		pageReadInProg = 1;
+	}
 }
-
-
 
 void*
 bigQueue1(void *vptr) {
-	cout << "Creating Thread ";
+	cout << "Creating BigQ constructor ";
 	threadParams_t *inParams = (threadParams_t *) vptr;
-	BigQ bq(*inParams->inPipe, *inParams->outPipe, *inParams->sortOrder, inParams->runLen);
+	BigQ bq(*inParams->inPipe, *inParams->outPipe, *inParams->sortOrder,
+			inParams->runLen);
 }
-void SortedFile::Add (Record &rec) {
+void SortedFile::Add(Record &rec) {
 
-  counter++;
- // cout<<"\n#### Counter:" << counter << &rec <<"####";
-  if(READING == currMode) {
-    currMode = WRITING;
+	counter++;
+	//push record to inpur pipe
+	//inPipe->Insert(&rec);
+	// cout<<"\n#### Counter:" << counter << &rec <<"####";
+	if (READING == currMode) {
+		currMode = WRITING;
 
-    if(flag==0) {
-      inPipe = new Pipe(IN_OUT_PIPE_BUFF_SIZE);
-      outPipe = new Pipe(IN_OUT_PIPE_BUFF_SIZE);
-      inPipe->Insert(&rec);
-      pthread_t thread1;
+		if (flag == 0) {
+			inPipe = new Pipe(IN_OUT_PIPE_BUFF_SIZE);
+			outPipe = new Pipe(IN_OUT_PIPE_BUFF_SIZE);
+			inPipe->Insert(&rec);
+			pthread_t thread1;
 
-  	threadParams_t *tp = new (std::nothrow) threadParams_t;
+			threadParams_t *tp = new (std::nothrow) threadParams_t;
 
-  	/*
-  	 * use a container to pass arguments to worker thread
-  	 */
-  	tp->inPipe = inPipe;
-  	tp->outPipe = outPipe;
-  	tp->sortOrder = sortOrder;
-  	tp->runLen = runLen;
+			/*
+			 * use a container to pass arguments to worker thread
+			 */
+			tp->inPipe = inPipe;
+			tp->outPipe = outPipe;
+			tp->sortOrder = sortOrder;
+			tp->runLen = runLen;
 
-  	pthread_create(&thread1, NULL, bigQueue1, (void *) tp);
-      	//cout << "Create queue ";
-      flag=1;
-    }
-  }
-  else if(WRITING == currMode) {
-    inPipe->Insert(&rec);
-  }
-  else {
-  }
+			pthread_create(&thread1, NULL, bigQueue1, (void *) tp);
+			flag = 1;
+		}
+	} else if (WRITING == currMode) {
+	  inPipe->Insert(&rec);
+	} else {
+	}
 }
 
-void SortedFile::mergeInflghtRecs(){
+void SortedFile::mergeInflghtRecs() {
 
+	cout << "\nin mergeInflights";
 //	int pipeover=0, fileover = 0;
 
-	// shutdown input pipe
+// shutdown input pipe
 	inPipe->ShutDown();
+
+	cout << "\ninput pipe closed";
 //	file.Close();
 
-	//empty the ouput pipe and do a two way merge
+//empty the ouput pipe and do a two way merge
 
 	// remove records from BigQ output pipe one at a time
 	// at the same time u are removing records from the internal BigQ you scan the sorted files data in sorted order
@@ -269,322 +299,335 @@ void SortedFile::mergeInflghtRecs(){
 	Record *pipeRec;
 	Record *fileRec;
 
-
-
 	ComparisonEngine comp;
 	DBFile tmp;
 
 	time_t seconds;
 
-	seconds = time (NULL);
+	seconds = time(NULL);
 
-	cout << "time in sseconds :"<< seconds ;
-	char* filename = "mergeFile"+seconds;
+	cout << "\ntime in sseconds :" << seconds;
 
-	tmp.Open(filename);
+	struct timeval tval;
+	gettimeofday(&tval, NULL);
+	stringstream ss;
+	ss << tval.tv_sec;
+	ss << ".";
+	ss << tval.tv_usec;
+
+	//string filename = "mergeFile" + ss.str();
+	string filename = "mergeFile" ;
+
+	cout << "\ntemp : File name :" << filename << endl;
+	tmp.Open(strdup(filename.c_str()));
 	//tmp.Open(0,filename);
 
-	Page tmpPage = new Page();
+//	Page *tmpPage = new Page();
 
-	int fromPipe = 0, fromFile =0;
+	int fromPipe = 0, fromFile = 0;
 	//currFile.MoveFirst();
+	/*
+	 DBFile dbfile;
+	 dbfile.Open (file_path);
+	 dbfile.MoveFirst ();*/
 
-	DBFile dbfile;
-	dbfile.Open (file_path);
-	dbfile.MoveFirst ();
+  //Record *backupCurrRecord = new Record(); 
+  //backupCurrRecord->Copy(currRecord);
+  //int    backupCurrPageIndex = currPageIndex;
 
-	while(1){
+	tmp.MoveFirst();
+  MoveFirst();
+
+	cout << " \nDB File Opened";
+	while (1) {
 
 		pipeRec = new Record;
 		fileRec = new Record;
 
 		fromPipe = outPipe->Remove(pipeRec);
-		fromFile = dbfile.GetNext(*fileRec);
+		fromFile = getRecordWithoutSort(*fileRec);	//  dbfile.GetNext(*fileRec);
 
-		if(fromPipe && fromFile){
-			if(comp.Compare(pipeRec,fileRec,sortOrder) > 0){
+		if (fromPipe && fromFile) {
+			if (comp.Compare(pipeRec, fileRec, sortOrder) > 0) {
 				tmp.Add(*fileRec);
-			}
-			else{
+			} else {
 				tmp.Add(*pipeRec);
 			}
 
 			continue;
 
 		}/*
-		else{
-			break;
-		}
-		*/
-		if(fromPipe && !fromFile){
+		 else{
+		 break;
+		 }
+		 */
+    else if (fromPipe && !fromFile) {
 			tmp.Add(*pipeRec);
-		}
-		else{
+		} else  if(!fromPipe && fromFile){
 			tmp.Add(*fileRec);
-		}
-
-		if(!fromPipe && !fromFile){
+		} else {
 			break;
-		}
-
-
-
-
+    }
 	}
 
+	tmp.Close();
 
+//	if(tmp.GetLength() > 0){
+	remove(file_path);
+	rename((strdup(filename.c_str())), file_path);
+//	}
+  //currRecord->Copy(backupCurrRecord);
+  //currPageIndex = backupCurrPageIndex;
+  Open(file_path);
+  //currFile.GetPage(&currPage, currPageIndex-1);;
+  //currPageIndex ++;
+}
 
+void SortedFile::toggleCurrMode() {
 
-
-
-	}
-
-void SortedFile::toggleCurrMode(){
-
-	if(READING == currMode) {
-		   currMode = WRITING;
-	}
-	else{
-		   currMode = READING;
+	if (READING == currMode) {
+		currMode = WRITING;
+	} else {
+		currMode = READING;
 	}
 
 }
 
-void SortedFile::createMetaFile()
-{
-	char path[100];
-	  fType f_type;
-	  sprintf(path, "%s.metadata", file_path);
+/*void SortedFile::createMetaFile() {
+ char path[100];
+ fType f_type;
+ sprintf(path, "%s.metadata", file_path);
 
 
-	ofstream metaFile;
-		metaFile.open(path);
-		metaFile << "Sorted"<< endl;
-		metaFile << (sortInfo)->runLength<< endl;
+ ofstream metaFile;
+ metaFile.open(path);
+ metaFile << "Sorted"<< endl;
+ metaFile << (sortInfo)->runLength<< endl;
 
-		metaFile << ((sortInfo)->myOrder->numAtts)<<endl;
+ metaFile << ((sortInfo)->myOrder->numAtts)<<endl;
 
-}
 
-int SortedFile::GetNext (Record &fetchme)
-{
+}*/
+
+int SortedFile::GetNext(Record &fetchme) {
 #if DEBUG
-  cout<< " current page index :" << currPageIndex << endl;
-  cout<< " current page length :" << currFile.GetLength() << endl;
+	cout<< " current page index :" << currPageIndex << endl;
+	cout<< " current page length :" << currFile.GetLength() << endl;
 #endif
 
-  if(WRITING == currMode) {
-	  // change mode and merge the inflight
-	  toggleCurrMode();
+	if (WRITING == currMode) {
+		// change mode and merge the inflight
+		toggleCurrMode();
 	  mergeInflghtRecs();
-  }
-  if(pageReadInProg==0) {
-    // currPageIndex = 460;
+	}
+	if (pageReadInProg == 0) {
+		// currPageIndex = 460;
 //	  cout << "GetPage 1"<< currPageIndex << endl;
-    currFile.GetPage(&currPage, currPageIndex);
-    currPageIndex= currPageIndex +1;
-    pageReadInProg = 1;
-  }
-
-
-  //fetch page
-
-  if(currPage.GetFirst(&fetchme) ) {
-    return 1;
-  }
-  else{
-
-    if(!(currPageIndex > currFile.GetLength()-2))
-    {//cout << "GetPage 2  page index :"<< currPageIndex << endl;
-      currFile.GetPage(&currPage, currPageIndex++);
-      pageReadInProg++;
-      currPage.GetFirst(&fetchme);
-      return 1;
-    }
-    else{
-      return 0;
-    }
-  }
-}
-
-int SortedFile::GetNext (Record &fetchme, CNF &myComparison, Record &literal) {
-
-	// variables for Binary Search
-	int start=0 , end=currFile.GetLength() - 2 ,mid=0;
-
-	if(WRITING == currMode) {
-		  // change mode and merge the inflight
-		  toggleCurrMode();
-		  mergeInflghtRecs();
-	  }
-
-	if(pageReadInProg!=0) {
-		currFile.MoveFirst();
+		currFile.GetPage(&currPage, currPageIndex);
+		currPageIndex = currPageIndex + 1;
+		pageReadInProg = 1;
 	}
 
-	OrderMaker *query = GetMatchingOrder(myComparison,*(sortInfo->myOrder));
+	//fetch page
 
-	query->Print();
+	if (currPage.GetFirst(&fetchme)) {
+		return 1;
+	} else {
 
-		if (!query)
-		{
-		    ComparisonEngine compEngine;
-			while (GetNext(fetchme))
-		    {
-	    	    if (compEngine.Compare(&fetchme, &literal, &myComparison))
-	        	    return 1;
-			}
-			//if control is here then no matching record was found
-		    return 0;
+		if (!(currPageIndex > currFile.GetLength() - 2)) {//cout << "GetPage 2  page index :"<< currPageIndex << endl;
+			currFile.GetPage(&currPage, currPageIndex++);
+			pageReadInProg++;
+			currPage.GetFirst(&fetchme);
+			return 1;
+		} else {
+			return 0;
 		}
-		else
-		{
-	        ComparisonEngine compEngine;
+	}
+}
 
-			// Binary search must be done once per query-order-maker
-			if (bSearchFlg == 0)
-			{
-				bSearchFlg = 1;
-				LoadMatchingPage(literal);
-				// find the page where query-order-maker first matches (using binary search)
-	            bool foundMatchingRec = false;
-	            while(GetNext(fetchme))
-	            {
-	                // match with queryOM, until we find a matching record
-	                if (compEngine.Compare(&literal, query, &fetchme, sortInfo->myOrder) == 0)
-	                {
-	                    if (compEngine.Compare(&fetchme, &literal, &myComparison))
-	                        return 1;
-	                    foundMatchingRec = true;
-	                    break;
-	                }
-	            }
-	            if(!foundMatchingRec)
-	                return 0;
-			}
+int SortedFile::getRecordWithSort(Record &fetchme, CNF &cnf, Record &literal) {
 
-			while(true)
-	        {
-	        	if(GetNext(fetchme))
-	            {
-	            	// match with queryOM, if matches, compare with CNF
-	                if (compEngine.Compare(&literal, query, &fetchme, sortInfo->myOrder) == 0)
-	                {
-	                	if (compEngine.Compare(&fetchme, &literal, &myComparison))
-	                    	return 1;
-						// otherwise CNF didn't match, try next record
-	                }
-	                else
-	                {
-	                	//if queryOM doesn't match, stop searching, return false
-	                    return 0;
-	                }
-				}
-	            else
-	            	return 0;
+
+	while (1) {
+		if (currPage.GetFirst(&fetchme) == 1) {
+			ComparisonEngine ceng;
+			//if (ceng.Compare(&literal, query, &fetchme, sortInfo->myOrder)
+			if (ceng.Compare(&literal, query, &fetchme, sortOrder)
+					== 0) {
+				if (ceng.Compare(&fetchme, &literal, &cnf))
+					return 1;
 			}
+			else return 0;
 		}
 
-	    //if control is here then no matching record was found
-	    return 0;
+		else {
 
+			currPageIndex++;
+			if (currPageIndex < currFile.GetLength() - 1)
+				currFile.GetPage(&currPage, currPageIndex);
+			else return 0;
+		}
+	}
 }
 
-OrderMaker* SortedFile:: GetMatchingOrder(CNF &myComparison,OrderMaker& file_order)
-{
-	/*
-	 * xamine the CNF that you are passed
-
-to try to build up an instance of the OrderMaker class that you can use to run a binary search on the sorted file.
-
-
-   OrderMakers {
-     int numAtts;
-     int whichAtts[MAX_ANDS];
-     Type whichTypes[MAX_ANDS];
-  }
-   CNFs{
-     Comparison orList[MAX_ANDS][MAX_ORS];
-     int orLens[MAX_ANDS];
-     int numAnds;
-}
-   check if cached order maker is usable
-      create new ordermaker if not
-	 *
-	 *
-	 *
-	 */
-    OrderMaker cnf_order;
-    OrderMaker fileOrderCopy = file_order;
-    GetSortOrderFromCNF(myComparison,cnf_order, fileOrderCopy);
-
-    OrderMaker *query = new OrderMaker();
-
-    for (int i = 0; i < file_order.numAtts; i++)
-    {
-        bool matched = false;
-        for(int j = 0; j < cnf_order.numAtts; j++)
-        {
-            if((file_order.whichAtts[i] == cnf_order.whichAtts[j]) && (file_order.whichTypes[i] == cnf_order.whichTypes[j]))
-            {
-                matched = true;
-                query->whichAtts[query->numAtts] = fileOrderCopy.whichAtts[j];
-                query->whichTypes[query->numAtts] = fileOrderCopy.whichTypes[j];
-                query->numAtts++;
-                break;
-            }
-        }
-        if(!matched)
-            break;
-    }
-    if(query->numAtts > 0)
-        return query;
-    else
-    {
-        delete query;
-        return NULL;
-    }
-
-}
-
-int SortedFile:: GetSortOrderFromCNF (CNF &myComparison,OrderMaker &cnf_order, OrderMaker &file_order) {
-
-    cnf_order.numAtts = 0;
-    file_order.numAtts = 0;
-
-    for (int i = 0; i < myComparison.numAnds; i++)
-	{
-        if (myComparison.orLens[i] != 1) {
-            continue;
-        }
-
-        if (myComparison.orList[i][0].op != Equals) {
-            continue;
-        }
-
-        if (myComparison.orList[i][0].operand1 == Left && myComparison.orList[i][0].operand2 == Literal)
-        {
-            cnf_order.whichAtts[cnf_order.numAtts] = myComparison.orList[i][0].whichAtt1;
-            cnf_order.whichTypes[cnf_order.numAtts] = myComparison.orList[i][0].attType;
-            file_order.whichAtts[file_order.numAtts] = myComparison.orList[i][0].whichAtt2;
-            file_order.whichTypes[file_order.numAtts] = myComparison.orList[i][0].attType;
-        }
-
-        else if (myComparison.orList[i][0].operand1 == Literal && myComparison.orList[i][0].operand2 == Right)
-        {
-            cnf_order.whichAtts[cnf_order.numAtts] = myComparison.orList[i][0].whichAtt2;
-            cnf_order.whichTypes[cnf_order.numAtts] = myComparison.orList[i][0].attType;
-            file_order.whichAtts[file_order.numAtts] = myComparison.orList[i][0].whichAtt1;
-            file_order.whichTypes[file_order.numAtts] = myComparison.orList[i][0].attType;
-        }
+int SortedFile::getRecordWithoutSort(Record &fetchme) {
+    if (currPage.GetFirst(&fetchme) == 1) {
+        return 1;
+    } 
+    else {
+      currPageIndex++;
+      if (currPageIndex < currFile.GetLength() - 1) {
+        currFile.GetPage(&currPage, currPageIndex);
+        if(currPage.GetFirst(&fetchme) == 1)
+          return 1;
         else
-            continue;
-
-        cnf_order.numAtts++;
-        file_order.numAtts++;
+          return 0;
+      }
+      else return 0;
     }
-
-    return cnf_order.numAtts;
+}
+int SortedFile::getRecordWithoutSort(Record &fetchme, CNF &cnf, Record &literal) {
+  while (true) {
+    if (currPage.GetFirst(&fetchme) == 1)
+    {
+      ComparisonEngine comp;
+      if (comp.Compare(&fetchme, &literal, &cnf))
+        return 1;
+    } else
+    {
+      currPageIndex++;
+      if (currPageIndex < currFile.GetLength() - 1)
+        currFile.GetPage(&currPage, currPageIndex);
+      else return 0;
+    }
+  }
 
 }
 
+int SortedFile::GetNext(Record &fetchme, CNF &cnf, Record &literal) {
+
+  cout << "\n In getNext with CNF  ";
+  cout << "\n In getNext with CNF  ";
+  cout << "\n In getNext with CNF  ";
+  cout << "\n In getNext with CNF  ";
+	if (WRITING == currMode) {
+		isQueryDoneAtleastOnce = 0;
+		hasSortOrder = 1;
+		toggleCurrMode();
+		mergeInflghtRecs();
+
+	}
+
+	if (hasSortOrder) {
+		//	 if(!queryBuilt){
+		if (!isQueryDoneAtleastOnce) {
+			isQueryDoneAtleastOnce = 1;
+			//int search;
+      cout << "\n before binary search call ";
+      cout << "\n before binary search call ";
+      query = new OrderMaker();
+			if (cnf.GetSortOrderAttsFromCNF(*query, *sortOrder) > 0) {
+						if (BinarySearch(fetchme, cnf, literal)) {
+					ComparisonEngine comp;
+					if (!comp.Compare(&fetchme, &literal, &cnf))	{
+						return getRecordWithSort(fetchme, cnf, literal);
+					}
+					else return 1;
+				}
+				else return 0;
+			} else {
+				hasSortOrder = 1;
+				return getRecordWithoutSort(fetchme, cnf, literal);
+			}
+		}
+
+		else {
+			return getRecordWithSort(fetchme, cnf, literal);
+		}
+	} else {
+		return getRecordWithoutSort(fetchme, cnf, literal);
+	}
+
+}
+
+int SortedFile::BinarySearch(Record& fetchme, CNF &cnf, Record &literal) {
+
+	cout << "Binary Search" << endl;
+	off_t first = currPageIndex;
+	off_t last = currFile.GetLength() - 2;
+
+	Record *currentRec = new Record;
+	Page *midPage = new Page;
+	bool found = false;
+	ComparisonEngine comp;
+	off_t mid = first;
+
+	while (first < last) {
+		mid = (first + last) / 2;
+
+		currFile.GetPage(midPage, mid);
+
+		if (midPage->GetFirst(&fetchme) == 1) {
+
+			if (comp.Compare(&literal, query, &fetchme, sortOrder)
+					<= 0) {  //fetchme > literal
+				last = mid;
+			} else {
+				first = mid;
+
+				if (first == last - 1) {
+					currFile.GetPage(midPage, last);
+					midPage->GetFirst(&fetchme);
+					if (comp.Compare(&literal, query, &fetchme,	sortOrder) > 0)
+					//if (comp.Compare(&literal, query, &fetchme,	sortInfo->myOrder) > 0)
+						mid = last;
+					break;
+				}
+			}
+		} else
+			break;
+	}
+
+	//Scanning from page mid till end page
+
+	if (mid == currPageIndex) {	//if mid points to curPage then we need to scan from current record till end of page
+		while (currPage.GetFirst(&fetchme) == 1) {
+
+			if (comp.Compare(&literal, query, &fetchme, sortOrder)
+					== 0) {
+				found = true;
+				break;
+			}
+		}
+
+	} else {//if mid is some other than current page then we need to load the page and scan it till end
+		currFile.GetPage(&currPage, mid);
+
+		while (currPage.GetFirst(&fetchme) == 1) {
+
+			if (comp.Compare(&literal, query, &fetchme, sortOrder)
+					== 0) {
+				found = true;
+				currPageIndex = mid;
+				break;
+			}
+		}
+
+	}
+
+	//if no record was found then record might exist in the first location of next page
+	if (!found && mid < currFile.GetLength() - 2) {
+		currFile.GetPage(&currPage, mid + 1);
+		if (currPage.GetFirst(&fetchme) == 1 && comp.Compare(&literal, query, &fetchme, sortOrder)			
+			== 0) {
+			found = true;
+			currPageIndex = mid + 1;
+		}
+	}
+
+	if (!found)
+		return 0;
+	else
+		return 1;
+
+}

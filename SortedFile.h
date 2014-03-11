@@ -46,17 +46,24 @@ class SortedFile:public GenDBFile {
     Pipe      *outPipe;
     OrderMaker *sortOrder;
     int       runLen;
+
+    OrderMaker *query;
     SortedFileMode  currMode;
 
-    SortInfo *sortInfo;
+//    SortInfo *sortInfo;
 
     int bSearchFlg =0;
 
     void toggleCurrMode();
     void mergeInflghtRecs();
-    void createMetaFile();
-
-
+  //  void createMetaFile();
+    int BinarySearch(Record& fetchme,CNF &cnf,Record &literal);
+ //   int getMatchPage(Record& literal);
+    int hasSortOrder;
+    int isQueryDoneAtleastOnce;
+    int getRecordWithoutSort (Record &fetchme, CNF &cnf, Record &literal);
+    int getRecordWithoutSort (Record &fetchme);
+    int getRecordWithSort(Record &fetchme, CNF &cnf, Record &literal);
 
 
 
@@ -76,11 +83,5 @@ public:
     void *setupBq(void *ptr);
     void start();
 
-
-    //returns common attributes of 2 OrderMakers in a 3rd OrderMaker
-          //if no attributes match, it returns null
-          OrderMaker* GetMatchingOrder(CNF &cnf,OrderMaker& file_order);
-
-      	int GetSortOrderFromCNF (CNF &cnf,OrderMaker &left, OrderMaker &right);
 };
 #endif

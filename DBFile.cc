@@ -22,26 +22,16 @@ DBFile::DBFile () {
 }
 
 int DBFile::Create (char *f_path, fType f_type, void *startup) {
-  char path[100];
-
-  sprintf(path, "%s.metadata", f_path);
-  FILE *fptr = fopen(path, "wr");
 
   switch(f_type) {
     case heap:
       {
         gen_db_file_ptr = new HeapFile();
-        fwrite((int *)&f_type, sizeof(f_type), 1, fptr);
       }
       break;
     case sorted:
       {
         gen_db_file_ptr = new SortedFile();
-
-        fwrite((int *)&f_type, sizeof(f_type), 1, fptr);
-
-        SortInfo *si = (SortInfo *)startup;
-        fwrite((SortInfo *)si, sizeof(SortInfo), 1, fptr);
       }
       break;
     case tree:
@@ -50,9 +40,6 @@ int DBFile::Create (char *f_path, fType f_type, void *startup) {
       cerr<<"\n Unknown input file type";
       exit(1);
   }
-  
-  fclose(fptr);
-
   return gen_db_file_ptr->Create(f_path, f_type, startup);
 }
 
@@ -68,9 +55,15 @@ int DBFile::Open (char *f_path) {
   sprintf(path, "%s.metadata", f_path);
   
   FILE *fptr = fopen(path, "r");
-  if(!fread(&f_type, sizeof(f_type), 1, fptr)) {
-    cerr<<"\n Read Error";
-    exit(1);
+  if(!fptr) {
+    fptr = fopen(path, "wr");
+    f_type = heap;
+    fwrite((int *)&f_type, 1, sizeof(int), fptr);
+  }else {
+    if(!fread(&f_type, 1, sizeof(int), fptr)) {
+      cerr<<"\n Read Error";
+      exit(1);
+    }
   }
   fclose(fptr);
 
