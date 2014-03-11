@@ -2,6 +2,8 @@
 #include "vector"
 #include "algorithm"
 #include "exception"
+#include <sys/time.h>
+#include <sstream>
 
 /*
  * global declarations
@@ -10,7 +12,7 @@ OrderMaker *g_sortOrder;
 int g_runCount = 0;
 
 File g_file;
-char *g_filePath = "partial.bin";
+char *g_filePath;
 
 std::vector<recOnVector*> recSortVectCurrent;
 
@@ -31,8 +33,8 @@ recOnVector::recOnVector() {
 
 
 
-void 
-moveRunToPages(threadParams_t *inParams) 
+void
+moveRunToPages(threadParams_t *inParams)
 {
   Record *currRecord = NULL;
   Page currPage;
@@ -40,28 +42,19 @@ moveRunToPages(threadParams_t *inParams)
   int pageAppendStatus = 0;
   int pageNumber = 0;
 
+  cout << "g_file.GetLength() :" << g_file.GetLength() << endl;
+
   pageNumber = g_file.GetLength();
 
-#ifdef DEBUG
-  cout << "MOving run to Pages ............" << endl;
-  cout << " Page number :" << pageNumber << endl;
-  cout << " recSortVect.size() :" << recSortVect.size() << endl;
-#endif
 
   pageIndexVect.push_back(pageNumber);
-  recOnVector *recVector;
 
   //   recVector = new recOnVector;
-#ifdef DEBUG
-  int tmpCount = 0;
-#endif
+int x=0;
   for (int i = 0; i < recSortVect.size(); i++) {
-
+++x;
     currRecord = recSortVect[i]->currRecord;
-#ifdef DEBUG
-    currRecord->Print(inParams->schema);
-    cout << "Appending record : " << tmpCount++<< endl;
-#endif
+
     /*
      * Append record to current page
      */
@@ -86,8 +79,7 @@ moveRunToPages(threadParams_t *inParams)
       currPage.Append(currRecord);
     }
 
-    //pageIndexVect.push_back(pageNumber);
-
+//cout << " total records : "<<x<<endl;
   } // End of for loop
   /*
    * Last page being written to file may not
@@ -95,15 +87,13 @@ moveRunToPages(threadParams_t *inParams)
    */
   g_file.AddPage(&currPage, pageNumber);
 
-#ifdef DEBUG
-  cout << "File length :" << g_file.GetLength() << endl;
-#endif
+
   pageNumber++;
 }
 
-bool 
-fptrSortSingleRun(const recOnVector *left, 
-                  const recOnVector *right) 
+bool
+fptrSortSingleRun(const recOnVector *left,
+                  const recOnVector *right)
 {
   ComparisonEngine comp;
   int retVal = 0;
@@ -121,9 +111,9 @@ fptrSortSingleRun(const recOnVector *left,
 
 }
 
-bool 
-mergeSortSingleRun(const recOnVector *left, 
-                   const recOnVector *right) 
+bool
+mergeSortSingleRun(const recOnVector *left,
+                   const recOnVector *right)
 {
   ComparisonEngine comp;
   int retVal = 0;
@@ -141,8 +131,8 @@ mergeSortSingleRun(const recOnVector *left,
 
 }
 
-bool 
-fptrHeapSort(const recOnVector *left, 
+bool
+fptrHeapSort(const recOnVector *left,
              const recOnVector *right)
 {
   ComparisonEngine compareengine;
@@ -155,27 +145,27 @@ fptrHeapSort(const recOnVector *left,
     return true;
 }
 
-void 
+void
 merge_pages(threadParams_t *inParams)
-{
-  recSortVect.clear();
+{int y=0;
+
   g_file.Open(1, g_filePath);
+
+  cout <<"length of the file :"<<g_file.GetLength();
 
   Page* currPage = NULL;
   recOnVector *recVector_current;
   recOnVector *recVector_next;
 
-  int k = 0;
   /*
    * start with the first page in each run.
    * Compare records from each run to give out the smallest
    * on Output Pipe.
    */
+  pageSortVect.clear();
   for(int i = 0; i<pageIndexVect.size(); i++)
   {
-#ifdef DEBUG
-    cout<< " Index : "<<pageIndexVect[i]<<endl;
-#endif
+
     /*
      * start with first page in each run index of which
      * are stored in pageIndexVect
@@ -189,7 +179,8 @@ merge_pages(threadParams_t *inParams)
      */
     Record *newrecord = new Record();
     pageSortVect[i]->GetFirst(newrecord);
-    
+    cout << "newrecord getbits :"<< newrecord->GetBits() << endl;
+
     /*
      * Stage-1
      * Form one vector across the first record in each run
@@ -200,13 +191,13 @@ merge_pages(threadParams_t *inParams)
     recVector_current->currRunNumber = i;
     recVector_current->currPageNumber = pageIndexVect[i];
 
+
     recSortVect.push_back(recVector_current);
   }
-#ifdef DEBUG
+
   cout<< "IN merge phase2";
-#endif
   /*
-   * Every iteration of below loop will give out 
+   * Every iteration of below loop will give out
    * smallest element from shriking record set
    */
   while(!recSortVect.empty())
@@ -214,14 +205,23 @@ merge_pages(threadParams_t *inParams)
     int out_run = 0;
     int out_page = 0;
 
-#ifdef DEBUG
-      cout << "\n===== Page: "<<pageSortVect[out_run];
-      cout<<"(out_page) :"<<(out_page) << " Index Count " << pageIndexVect[out_run+1]"======"<< endl;
-#endif
+
     /*
      * Heapify the vector in Stage-1 to find the minimum
      * so that we can start putting it on Output pipe
      */
+
+ //   cout << "before paint"<<endl;
+//    cout << "recSortVect.size() ::"<<recSortVect.size()<<endl;
+                for (int i=0; i<recSortVect.size(); i++) {
+
+ //               cout <<  recSortVect[i]->currRecord->GetBits() << endl;
+ //               cout <<  recSortVect[i]->currRecord->GetBits() << endl;
+ //               cout <<  recSortVect[i]->currRecord->GetBits();
+ //               cout <<  recSortVect[i]->currRecord->GetBits();
+ //               cout <<  recSortVect[i]->currRecord->GetBits();
+                }
+
     std::make_heap(recSortVect.begin(),
                    recSortVect.end(),
                    fptrHeapSort);
@@ -230,18 +230,18 @@ merge_pages(threadParams_t *inParams)
     recVector_current = recSortVect.front(); /* <--- minimum element */
     out_run = recVector_current->currRunNumber;
     out_page = recVector_current->currPageNumber;
-    /* 
+    /*
      * Remove smallest element from heap
      */
     std::pop_heap(recSortVect.begin(),recSortVect.end());
     recSortVect.pop_back();
 
-    /* 
-     * Output smallest element to Pipe 
+    /*
+     * Output smallest element to Pipe
      */
-#ifdef DEBUG
-				recVector_current->currRecord->Print(inParams->schema);
-#endif
+++y;
+//cout << "writtent to out pipe :"<<y<<endl;
+
     inParams->outPipe->Insert(recVector_current->currRecord);
     /*
      * Fill the empty space formed after removing the smallest element
@@ -252,10 +252,6 @@ merge_pages(threadParams_t *inParams)
     recVector_next->currRunNumber = out_run;
     recVector_next->currPageNumber = out_page;
 
-#ifdef DEBUG
-    cout<< "IN merge phase3";
-#endif
-
     /*
      * Check if you can get it on same page.
      * If not move on to next page in same Run
@@ -264,12 +260,9 @@ merge_pages(threadParams_t *inParams)
       recSortVect.push_back(recVector_next);
     }
     else {
-#ifdef DEBUG
-      cout<< "\nPage Change";
-      cout << "\n(out_page+1) :"<<(out_page+1) << " Index Count " << pageIndexVect[out_run+1]<< endl;
-#endif
+
       /* check withing available pages Only */
-      if(out_page+2 < g_file.GetLength()){ 
+      if(out_page+2 < g_file.GetLength()){
 
         if(out_page< pageIndexVect[out_run+1]-1) {
           /*
@@ -278,7 +271,7 @@ merge_pages(threadParams_t *inParams)
           g_file.GetPage(currPage,out_page+1);
           pageSortVect[out_run] = currPage;
           /*
-           * Start with first record in new page and keep filling the 
+           * Start with first record in new page and keep filling the
            * hole formed
            */
           if(pageSortVect[out_run]->GetFirst(recVector_next->currRecord)) {
@@ -298,6 +291,10 @@ merge_pages(threadParams_t *inParams)
 
 void*
 bigQueue(void *vptr) {
+
+	pageIndexVect.clear();
+	 recSortVect.clear();
+
 	threadParams_t *inParams = (threadParams_t *) vptr;
 
   cout <<"\n ********** Thread bigQueue ***********";
@@ -311,18 +308,16 @@ bigQueue(void *vptr) {
 	bool appendStatus = 0;
 
 	g_file.Open(0, g_filePath);
-	int count = 0;
-
+int k=0;
 	while (record_present) {
-//  cout <<"\n ********** in First while ***********";
+
 		while (numPages <= inParams->runLen) {
-  //cout <<"\n ********** in Second while ***********"<<count++;
- // cout <<"\n ********** in Second while ***********";
 			/*
 			 * Fetch record(s) from input pipe one by one
 			 * and add it to a page/runs
 			 */
 			if (inParams->inPipe->Remove(&fetchedRecord)) {
+			//	cout << "num of records : "<<++k<<endl;
 				/*
 				 * Create a copy of a record to store it in vector,
 				 * because 'fetchedRecord' is local variable
@@ -340,9 +335,7 @@ bigQueue(void *vptr) {
 				tmpRecordVector->currRecord->Copy(&fetchedRecord);
 				tmpRecordVector->currRunNumber = g_runCount;
 
-#ifdef DEBUG
-				recVector->currRecord->Print(inParams->schema);
-#endif
+
 				/*
 				 * Push the record on vector at the end
 				 */
@@ -350,9 +343,7 @@ bigQueue(void *vptr) {
 				/*
 				 * try adding the record to Page/run
 				 */
-#ifdef DEBUG
-				recVector->currRecord->Print(inParams->schema);
-#endif
+
 				appendStatus = tmpBufferPage.Append(&fetchedRecord);
 
 				/*
@@ -360,19 +351,12 @@ bigQueue(void *vptr) {
 				 * Clean it and reuse it. Increment page count.
 				 */
 				if (0 == appendStatus) {
-#ifdef DEBUG
-					cout << " Page Change" << count++;
-#endif
+
 					numPages++;
 					tmpBufferPage.EmptyItOut();
 					tmpBufferPage.Append(&fetchedRecord);
 
-#ifdef DEBUG
-          for (int i=0; i<recSortVect.size(); i++) {
-            cout << "before paint";
-            recSortVect[i]->currRecord->Print (inParams->schema);
-          }
-#endif
+
 
 				}
 			} else {
@@ -386,31 +370,30 @@ bigQueue(void *vptr) {
 			}
 		}/* End of while(numPages <= inParams->runLen) */
 
+		cout << "numPages :"<<numPages<<endl;
 		pageCountPerRunVect.push_back(numPages);
 
 		/* Reset the number of pages per run */
 		numPages = 0;
 
   cout <<"\n ********** recSortVector Size: " << recSortVect.size() <<"***********";
-#ifdef DEBUG
-		cout << "\nbigQueue before sorting " << g_runCount <<" run";
-    for (int i=0; i<recSortVect.size(); i++) {
-      cout << "before paint";
-      recSortVect[i]->currRecord->Print (inParams->schema);
-    }
-#endif
 
-		/* 
+
+
+		/*
      * Sort each individual run
      */
-		std::sort(recSortVect.begin(), 
-              recSortVect.end(), 
+		std::sort(recSortVect.begin(),
+              recSortVect.end(),
               fptrSortSingleRun);
 
-		/* 
+		/*
      * Convert each run to pages
      */
 		moveRunToPages(inParams);
+
+
+
 		/*
 		 * TODO: Free currRecord buffer in each entry in vector.
 		 * This was allocated before each record added to vector
@@ -424,26 +407,20 @@ bigQueue(void *vptr) {
 	 */
 	g_file.Close();
 
-#ifdef DEBUG
-  cout<<"\nFinished forming runPages and start merging";
-#endif
+
 
 	merge_pages(inParams);
+
+	remove(g_filePath);
   cout <<"\n ********** Thread bigQueue Over ***********";
 }
 
-#ifdef DEBUG
-BigQ::BigQ(Pipe &in, 
-           Pipe &out, 
-           OrderMaker &sortorder, 
-           int runlen,
-		       Schema *schem) {
-#else
-BigQ::BigQ(Pipe &in, 
-           Pipe &out, 
-           OrderMaker &sortorder, 
+
+BigQ::BigQ(Pipe &in,
+           Pipe &out,
+           OrderMaker &sortorder,
            int runlen) {
-#endif
+
 	// read data from in pipe sort them into runlen pages
 
 	threadParams_t *tp = new (std::nothrow) threadParams_t;
@@ -451,9 +428,18 @@ BigQ::BigQ(Pipe &in,
 	/*
 	 * use a container to pass arguments to worker thread
 	 */
-#ifdef DEBUG
-	tp->schema = schem;
-#endif
+
+	struct timeval tval;
+		gettimeofday(&tval, NULL);
+		stringstream ss;
+		ss << tval.tv_sec;
+		ss << ".";
+		ss << tval.tv_usec;
+
+		string filename = "partial" + ss.str();
+
+	g_filePath = strdup(filename.c_str());
+
 	tp->inPipe = &in;
 	tp->outPipe = &out;
 	tp->sortOrder = &sortorder;
@@ -472,6 +458,7 @@ BigQ::BigQ(Pipe &in,
 	// into the out pipe
 
 	// finally shut down the out pipe
+	for(int l=0;l<100;l++);
 	out.ShutDown();
   cout <<"\n ********** Thread FINISHED ***********";
 }

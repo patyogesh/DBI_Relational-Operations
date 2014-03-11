@@ -252,7 +252,7 @@ bigQueue1(void *vptr) {
 			inParams->runLen);
 }
 void SortedFile::Add(Record &rec) {
-	cout << "Begin Entry SortedFile::Add for file :: "<< file_path << endl;
+//	cout << "Begin Entry SortedFile::Add for file :: "<< file_path << endl;
 	counter++;
 	//push record to inpur pipe
 	//inPipe->Insert(&rec);
@@ -263,7 +263,7 @@ void SortedFile::Add(Record &rec) {
 		if (flag == 0) {
 			inPipe = new Pipe(IN_OUT_PIPE_BUFF_SIZE);
 			outPipe = new Pipe(IN_OUT_PIPE_BUFF_SIZE);
-			inPipe->Insert(&rec);
+
 			pthread_t thread1;
 
 			threadParams_t *tp = new (std::nothrow) threadParams_t;
@@ -276,7 +276,7 @@ void SortedFile::Add(Record &rec) {
 			tp->sortOrder = sortOrder;
 			tp->runLen = runLen;
 			//bigQ = new BigQ(*inPipe, *outPipe, *sortOrder, runLen);
-
+			inPipe->Insert(&rec);
 			pthread_create(&thread1, NULL, bigQueue1, (void *) tp);
 			flag = 1;
 		}
@@ -335,13 +335,13 @@ void SortedFile::createMetaDataFile(char *fpath, fType f_type, OrderMaker *sortO
 
 void SortedFile::mergeInflghtRecs() {
 
-	cout << "\nin mergeInflights for file " << file_path << endl;
+//	cout << "\nin mergeInflights for file " << file_path << endl;
 //	int pipeover=0, fileover = 0;
 
 // shutdown input pipe
 	inPipe->ShutDown();
 
-	cout << "\ninput pipe closed";
+//	cout << "\ninput pipe closed";
 //	file.Close();
 
 //empty the ouput pipe and do a two way merge
@@ -360,7 +360,7 @@ void SortedFile::mergeInflghtRecs() {
 
 	seconds = time(NULL);
 
-	cout << "\ntime in sseconds :" << seconds;
+//	cout << "\ntime in sseconds :" << seconds;
 
 	struct timeval tval;
 	gettimeofday(&tval, NULL);
@@ -372,14 +372,14 @@ void SortedFile::mergeInflghtRecs() {
 	string filename = "mergeFile" + ss.str();
 	//string filename = "mergeFile" ;
 
-	cout << "\ntemp : File name :" << filename << endl;
-	cout << "\ntemp : file_path :" << file_path << endl;
-	cout << "\ntemp : file_path :" << file_path << endl;
-	cout << "\ntemp : file_path :" << file_path << endl;
-	cout << "\ntemp : file_path :" << file_path << endl;
+//	cout << "\ntemp : File name :" << filename << endl;
+//	cout << "\ntemp : file_path :" << file_path << endl;
+//	cout << "\ntemp : file_path :" << file_path << endl;
+//	cout << "\ntemp : file_path :" << file_path << endl;
+//	cout << "\ntemp : file_path :" << file_path << endl;
 	struct {OrderMaker *o; int l;} startup = {sortOrder, runLen};
 	DBFile tmp;
-			cout << "\n output to dbfile : " << strdup(filename.c_str()) << endl;
+	//		cout << "\n output to dbfile : " << strdup(filename.c_str()) << endl;
 			tmp.Create (strdup(filename.c_str()), heap, &startup);
 
 	//tmp.Open(strdup(filename.c_str()));
@@ -400,22 +400,47 @@ void SortedFile::mergeInflghtRecs() {
 
 	tmp.MoveFirst();
   MoveFirst();
+	int k=0,l=0,m=0,n=0,o=0,p=0,q=0;
+//	cout << " \nDB File Opened" << endl;
+	int pipeYes=1,fileYes=1;
 
-	cout << " \nDB File Opened" << endl;
+	pipeRec = new Record;
+	fileRec = new Record;
+	fromPipe = outPipe->Remove(pipeRec);
+	fromFile = getRecordWithoutSort(*fileRec);
 	while (1) {
 
-		pipeRec = new Record;
-		fileRec = new Record;
 
+
+
+
+	/*	if(pipeYes)
 		fromPipe = outPipe->Remove(pipeRec);
-		fromFile = getRecordWithoutSort(*fileRec);	//  dbfile.GetNext(*fileRec);
+		if(fileYes)
+		fromFile = getRecordWithoutSort(*fileRec);	//  dbfile.GetNext(*fileRec);*/
+
+
+
+		if(fromPipe)
+			++k;
+		if(fromFile)
+			++l;
 
 		if (fromPipe && fromFile) {
+			++m;
 	//		cout << "got records from pipe and file to be put in merge file"<<filename << endl;
-			if (comp.Compare(pipeRec, fileRec, sortOrder) > 0) {
+			if (comp.Compare(pipeRec, fileRec, sortOrder) >= 0) {
 				tmp.Add(*fileRec);
+				fileRec = new Record;
+				fromFile = getRecordWithoutSort(*fileRec);
+				pipeYes=0;fileYes=1;
+				++p;
 			} else {
 				tmp.Add(*pipeRec);
+				pipeRec = new Record;
+				fromPipe = outPipe->Remove(pipeRec);
+				fileYes=0;pipeYes=1;
+				++q;
 			}
 
 			continue;
@@ -426,17 +451,32 @@ void SortedFile::mergeInflghtRecs() {
 		 }
 		 */
     else if (fromPipe && !fromFile) {
+    	++n;
    // 	cout << "got records from pipe to be put in merge file"<<filename << endl;
 			tmp.Add(*pipeRec);
+			pipeRec = new Record;
+			fromPipe = outPipe->Remove(pipeRec);
+			fileYes=0;pipeYes=1;
 		} else  if(!fromPipe && fromFile){
+			++o;
 		//	cout << "got records from file to be put in merge file"<<filename << endl;
 			tmp.Add(*fileRec);
+			fileRec = new Record;
+			fromFile = getRecordWithoutSort(*fileRec);
+			pipeYes=0;fileYes=1;
 		} else {
 			break;
     }
-	}
-
-	cout << "All records inserted in merge file proceeding with close and cleanup" << endl ;
+}
+cout << "total records from pipe :" << k<<endl;
+cout << "total records from file :" << l<<endl;
+cout << "total times file and pipe called:" << m<<endl;
+cout << "total times  pipe called:" << n<<endl;
+cout << "total times file  called:" << o<<endl;
+cout << "Total added from pipe :" <<q+n<<endl;
+cout << "Total added from file :" <<p+o<<endl;
+cout << "Total written to merge file :"<< p+q+n+o<<endl;
+//	cout << "All records inserted in merge file proceeding with close and cleanup" << endl ;
 
 	currFile.Close();
 	tmp.Close();

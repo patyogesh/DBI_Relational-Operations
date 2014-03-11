@@ -1,4 +1,4 @@
-#ifndef BIGQ_H 
+#ifndef BIGQ_H
 #define BIGQ_H
 #include <pthread.h>
 #include <iostream>
@@ -8,9 +8,9 @@
 
 using namespace std;
 
-struct SortInfo {                                                                                                                                                       
-  OrderMaker *myOrder;                                                                                                                                                  
-  int runLength;                                                                                                                                                        
+struct SortInfo {
+  OrderMaker *myOrder;
+  int runLength;
 };
 /*
  * Use temporary structure for passing multiple aruguments
@@ -21,9 +21,7 @@ struct threadParams {
   Pipe *outPipe;
   OrderMaker *sortOrder;
   int runLen;
-#ifdef DEBUG
-  Schema *schema;
-#endif
+
 };
 typedef struct threadParams threadParams_t;
 
@@ -44,26 +42,16 @@ class BigQ {
 public:
 
 
-#ifdef DEBUG
-	Schema *schema;
-#endif
   Pipe *inPipe;
   Pipe *outPipe;
   OrderMaker *sortOrder;
   int runLen;
 
-#ifdef DEBUG
-	BigQ (Pipe &in, 
-        Pipe &out, 
-        OrderMaker &sortorder, 
-        int runlen,
-        Schema *schema);
-#else
-	BigQ (Pipe &in, 
-        Pipe &out, 
-        OrderMaker &sortorder, 
+	BigQ (Pipe &in,
+        Pipe &out,
+        OrderMaker &sortorder,
         int runlen);
-#endif
+
 	~BigQ ();
 };
 

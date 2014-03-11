@@ -43,7 +43,7 @@ void test1 () {
 	dbfile.Close ();
 
 	char tbl_path[100];
-	sprintf (tbl_path, "%s%s.tbl", tpch_dir, rel->name()); 
+	sprintf (tbl_path, "%s%s.tbl", tpch_dir, rel->name());
 	cout << " input from file : " << tbl_path << endl;
 
         FILE *tblfile = fopen (tbl_path, "r");
@@ -63,7 +63,7 @@ void test1 () {
 		if (x < 3) {
 			proc = add_data (tblfile,lrand48()%(int)pow(1e3,x)+(x-1)*1000, res);
 			tot += proc;
-			if (proc) 
+			if (proc)
 				cout << "\n\t added " << proc << " recs..so far " << tot << endl;
 		}
 		else {
@@ -74,7 +74,7 @@ void test1 () {
 	fclose (tblfile);
 }
 
-// sequential scan of a DBfile 
+// sequential scan of a DBfile
 void test2 () {
 
 	cout << " scan : " << rel->path() << "\n";
@@ -98,7 +98,7 @@ void test2 () {
 
 void test3 () {
 
-	CNF cnf; 
+	CNF cnf;
 	Record literal;
 	rel->get_cnf (cnf, literal);
 
@@ -126,7 +126,7 @@ int main (int argc, char *argv[]) {
 	setup ();
 
 	relation *rel_ptr[] = {n, r, c, p, ps, s, o, li};
-	void (*test_ptr[]) () = {&test1, &test2, &test3};  
+	void (*test_ptr[]) () = {&test1, &test2, &test3};
 	void (*test) ();
 
 	int tindx = 0;
