@@ -35,6 +35,7 @@ public:
     virtual void Add (Record &addme)=0;
     virtual int GetNext (Record &fetchme)=0;
     virtual int GetNext (Record &fetchme, CNF &cnf, Record &literal)=0;
+    virtual void AppendSequential(Record &appendme)=0;
 
 };
 #endif

@@ -64,6 +64,7 @@ class SortedFile:public GenDBFile {
     int getRecordWithoutSort (Record &fetchme, CNF &cnf, Record &literal);
     int getRecordWithoutSort (Record &fetchme);
     int getRecordWithSort(Record &fetchme, CNF &cnf, Record &literal);
+    void createMetaDataFile(char *fpath, fType file_type, OrderMaker *sortOrder,int runLen);
 
 
 
@@ -82,6 +83,8 @@ public:
     int GetNext (Record &fetchme, CNF &cnf, Record &literal);
     void *setupBq(void *ptr);
     void start();
+
+    void AppendSequential(Record &appendme);
 
 };
 #endif

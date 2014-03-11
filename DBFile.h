@@ -10,7 +10,7 @@
 #include "GenDBFile.h"
 #include <fstream>
 
-// stub DBFile header..replace it with your own DBFile.h 
+// stub DBFile header..replace it with your own DBFile.h
 
 class GenDBFile;
 
@@ -41,6 +41,7 @@ public:
     void Add (Record &addme);
     int GetNext (Record &fetchme);
     int GetNext (Record &fetchme, CNF &cnf, Record &literal);
+    void AppendSequential(Record &appendme);
 
 };
 #endif

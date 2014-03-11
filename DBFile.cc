@@ -21,6 +21,8 @@ using namespace std;
 DBFile::DBFile () {
 }
 
+
+
 int DBFile::Create (char *f_path, fType f_type, void *startup) {
 
   switch(f_type) {
@@ -51,9 +53,9 @@ void DBFile::Load (Schema &f_schema, char *loadpath) {
 int DBFile::Open (char *f_path) {
   char path[100];
   fType f_type;
-  
+
   sprintf(path, "%s.metadata", f_path);
-  
+
   FILE *fptr = fopen(path, "r");
   if(!fptr) {
     fptr = fopen(path, "wr");
@@ -108,4 +110,8 @@ int DBFile::GetNext (Record &fetchme)
 
 int DBFile::GetNext (Record &fetchme, CNF &myComparison, Record &literal) {
   return gen_db_file_ptr->GetNext(fetchme, myComparison, literal);
+}
+
+void DBFile::AppendSequential(Record &appendme){
+	gen_db_file_ptr->AppendSequential(appendme);
 }

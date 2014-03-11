@@ -35,5 +35,6 @@ public:
     void Add (Record &addme);
     int GetNext (Record &fetchme);
     int GetNext (Record &fetchme, CNF &cnf, Record &literal);
+    void AppendSequential(Record &appendme);
 };
 #endif

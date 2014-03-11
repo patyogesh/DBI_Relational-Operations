@@ -47,3 +47,7 @@ int GenDBFile::GetNext (Record &fetchme)
 
 int GenDBFile::GetNext (Record &fetchme, CNF &myComparison, Record &literal) {
 }
+
+void GenDBAppendSequential(Record &appendme){
+
+}
