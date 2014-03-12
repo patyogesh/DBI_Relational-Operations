@@ -104,7 +104,8 @@ public:
 
         //returns common attributes of 2 OrderMakers in a 3rd OrderMaker
                   //if no attributes match, it returns null
-        	int GetSortOrderAttsFromCNF (OrderMaker &cnf_order, OrderMaker &file_order);
+        	//int GetSortOrderAttsFromCNF (OrderMaker &file_order, OrderMaker &cnf_order);
+          int GetSortOrderAttsFromCNF(OrderMaker &fileOrder, OrderMaker &queryOrder, OrderMaker &literalOrder);
 
 };
 

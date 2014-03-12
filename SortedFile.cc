@@ -24,6 +24,7 @@ SortedFile::SortedFile() {
 	counter = 0;
   hasSortOrder = 1;
   flag = 0;
+  found = 0;
 }
 
 int SortedFile::Create(char *f_path, fType f_type, void *startup) {
@@ -60,8 +61,9 @@ int SortedFile::Create(char *f_path, fType f_type, void *startup) {
 }
 
 void SortedFile::Load(Schema &f_schema, char *loadpath) {
+#ifdef PRINT_2_B
 	cout << "Begin Entry SortedFile::Load";
-
+#endif
 	/*currMode = WRITING;
 
 	if (!bigQ) {
@@ -146,7 +148,9 @@ int SortedFile::Open(char *f_path) {
 }
 
 int SortedFile::Close() {
+#ifdef PRINT_2_B
 	cout << "Begin Entry SortedFile::Close";
+#endif
 	if (!outPipe || !inPipe) {
 		return currFile.Close();
 	}
@@ -620,10 +624,6 @@ int SortedFile::getRecordWithoutSort(Record &fetchme, CNF &cnf, Record &literal)
 
 int SortedFile::GetNext(Record &fetchme, CNF &cnf, Record &literal) {
 
-  cout << "\n In getNext with CNF  ";
-  cout << "\n In getNext with CNF  ";
-  cout << "\n In getNext with CNF  ";
-  cout << "\n In getNext with CNF  ";
 	if (WRITING == currMode) {
 		isQueryDoneAtleastOnce = 0;
 		hasSortOrder = 1;
@@ -631,117 +631,123 @@ int SortedFile::GetNext(Record &fetchme, CNF &cnf, Record &literal) {
 		mergeInflghtRecs();
 
 	}
-
-	if (hasSortOrder) {
-		//	 if(!queryBuilt){
-		if (!isQueryDoneAtleastOnce) {
-			isQueryDoneAtleastOnce = 1;
-			//int search;
-      cout << "\n before binary search call ";
+  ComparisonEngine comp;
+  cout << "\n FOUND : " << found;
+  if(hasSortOrder) {
+    if(!found) {
+    /*
+     * Binary search
+     */
       cout << "\n before binary search call ";
       query = new OrderMaker();
-			if (cnf.GetSortOrderAttsFromCNF(*query, *sortOrder) > 0) {
-						if (BinarySearch(fetchme, cnf, literal)) {
-					ComparisonEngine comp;
-					if (!comp.Compare(&fetchme, &literal, &cnf))	{
-						return getRecordWithSort(fetchme, cnf, literal);
-					}
-					else return 1;
-				}
-				else return 0;
-			} else {
-				hasSortOrder = 1;
-				return getRecordWithoutSort(fetchme, cnf, literal);
-			}
-		}
+			if (cnf.GetSortOrderAttsFromCNF(*sortOrder, *query, literalOrder) > 0) {
+        cout <<"\n  ------------- Sort Order matches with search query ---------------";
+				if (!BinarySearch(fetchme, cnf, literal)) {
+          /* Binary search failed */
+          return 0;
+        }
+        else {
+          /* Binary search Success */
+          found = 1;
+          do {
+            /* Compare against query orderMaker */
+            if (comp.Compare(&fetchme, query, &literal, &literalOrder) > 0) {
+              return 0;
+            }
+            /* Compare against cnf */
+            if(comp.Compare (&fetchme, &literal, &cnf))
+              return 1;
+          }while(GetNext(fetchme));
+        }
 
-		else {
-			return getRecordWithSort(fetchme, cnf, literal);
-		}
-	} else {
-		return getRecordWithoutSort(fetchme, cnf, literal);
-	}
+        cout <<"\n  ------------- I don't think it comes here ---------------";
+        return 0;
+      }
+      
+      else {
+        /* Query Order and sort Order DO NOT match */
+        /* Linear search */
+        cout <<"\n  ------------- Sort Order DOES NOT MATCH with search query ---------------";
+        found = 1;
+        while(GetNext(fetchme)) {
+          if(comp.Compare (&fetchme, &literal, &cnf))
+            return 1;
+        }
+        return 0;
+      }
+    }// if(!found)
 
+    else if(1 == found) {
+        cout <<"\n  ------------- found = 1 ---------------";
+      /*
+       * Come here when we found out that query order doesn't match sortOrder
+       */
+      while(GetNext(fetchme)) {
+        if(comp.Compare (&fetchme, &literal, &cnf))
+          return 1;
+      }
+      return 0;
+    }
+  }
+  else if(1 == found) {
+    /*
+     * Come here when we found out that query order doesn't match sortOrder
+     */
+    while(GetNext(fetchme)) {
+      if(comp.Compare (&fetchme, &literal, &cnf))
+        return 1;
+    }
+    return 0;
+  }
+  return 0;
 }
 
 int SortedFile::BinarySearch(Record& fetchme, CNF &cnf, Record &literal) {
 
-	cout << "Binary Search" << endl;
-	off_t first = currPageIndex;
-	off_t last = currFile.GetLength() - 2;
-
-	Record *currentRec = new Record;
-	Page *midPage = new Page;
-	bool found = false;
+  int low = 0;
+  int mid = 0;
+  int high = currFile.GetLength();
 	ComparisonEngine comp;
-	off_t mid = first;
 
-	while (first < last) {
-		mid = (first + last) / 2;
+  while(1) {
+    if ((high - low) > 2) {
+      mid = (low + high) / 2;
 
-		currFile.GetPage(midPage, mid);
+      //cout << "\n *** Looping ***" << " " << low+high;
+      if ( mid % 2 != 0) {
+        mid += 1;
+      }
+      currPage.EmptyItOut();
+      currFile.GetPage(&currPage, mid);
+      currPage.GetFirst(&fetchme);
+      
+      if (comp.Compare(&fetchme, query, &literal, &literalOrder) >= 0) {
+        high = mid;
+      }
+      else {
+        low = mid;
+      }
+    }
+    else {
+      cout << "\n *** Breaking Out ***";
+      break;
+    }
+  }
+  currPage.EmptyItOut();
+  currFile.GetPage(&currPage, low);
 
-		if (midPage->GetFirst(&fetchme) == 1) {
-
-			if (comp.Compare(&literal, query, &fetchme, sortOrder)
-					<= 0) {  //fetchme > literal
-				last = mid;
-			} else {
-				first = mid;
-
-				if (first == last - 1) {
-					currFile.GetPage(midPage, last);
-					midPage->GetFirst(&fetchme);
-					if (comp.Compare(&literal, query, &fetchme,	sortOrder) > 0)
-					//if (comp.Compare(&literal, query, &fetchme,	sortInfo->myOrder) > 0)
-						mid = last;
-					break;
-				}
-			}
-		} else
-			break;
-	}
-
-	//Scanning from page mid till end page
-
-	if (mid == currPageIndex) {	//if mid points to curPage then we need to scan from current record till end of page
-		while (currPage.GetFirst(&fetchme) == 1) {
-
-			if (comp.Compare(&literal, query, &fetchme, sortOrder)
-					== 0) {
-				found = true;
-				break;
-			}
-		}
-
-	} else {//if mid is some other than current page then we need to load the page and scan it till end
-		currFile.GetPage(&currPage, mid);
-
-		while (currPage.GetFirst(&fetchme) == 1) {
-
-			if (comp.Compare(&literal, query, &fetchme, sortOrder)
-					== 0) {
-				found = true;
-				currPageIndex = mid;
-				break;
-			}
-		}
-
-	}
-
-	//if no record was found then record might exist in the first location of next page
-	if (!found && mid < currFile.GetLength() - 2) {
-		currFile.GetPage(&currPage, mid + 1);
-		if (currPage.GetFirst(&fetchme) == 1 && comp.Compare(&literal, query, &fetchme, sortOrder)
-			== 0) {
-			found = true;
-			currPageIndex = mid + 1;
-		}
-	}
-
-	if (!found)
-		return 0;
-	else
-		return 1;
-
+  int ctr = 0;
+  while(1) {
+    if(!GetNext(fetchme)) {
+      return 0;
+    }
+    else {
+      if (comp.Compare(&fetchme, query, &literal, &literalOrder) == 0) {
+        cout << "\n *** Return from Binary here***" << " " << ++ctr;
+        return 1;
+      }
+      else
+        continue;
+    }
+  }
 }

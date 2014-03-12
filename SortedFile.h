@@ -48,11 +48,12 @@ class SortedFile:public GenDBFile {
     int       runLen;
 
     OrderMaker *query;
+    OrderMaker literalOrder;
     SortedFileMode  currMode;
 
 //    SortInfo *sortInfo;
 
-    int bSearchFlg =0;
+    int found;
 
     void toggleCurrMode();
     void mergeInflghtRecs();
